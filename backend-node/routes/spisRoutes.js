@@ -23,6 +23,32 @@ router.post("/upload-photo", upload.single("photo"), (req, res) => {
     res.json({ photo_url: photoUrl });
 });
 
+router.get("/last-docno", async (req, res) => {
+    try {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+  
+      const [rows] = await db.query(
+        "SELECT doc_no FROM spis WHERE doc_no LIKE ? ORDER BY id DESC LIMIT 1",
+        [`IM/SPIS/${year}/${month}/%`]
+      );
+  
+      if (rows.length === 0) {
+        return res.json({ lastNumber: 0 });
+      }
+  
+      const lastDocNo = rows[0].doc_no;
+      const parts = lastDocNo.split("/");
+      const lastNumber = parseInt(parts[4], 10) || 0;
+  
+      res.json({ lastNumber });
+    } catch (err) {
+      console.error("Error fetching last doc_no:", err);
+      res.status(500).json({ error: "Failed to get last doc_no" });
+    }
+});
+
 // === POST /api/spis ===
 // Simpan data SPIS ke database
 router.post("/", upload.single("photo"), async (req, res) => {

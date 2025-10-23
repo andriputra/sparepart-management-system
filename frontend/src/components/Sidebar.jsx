@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { FiMenu, FiLogOut, FiFileText, FiHome } from "react-icons/fi";
+import { FiMenu, FiLogOut, FiFileText, FiHome, FiSliders, FiCpu } from "react-icons/fi";
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -15,7 +15,9 @@ export default function Sidebar() {
 
   const menus = [
     { name: "Dashboard", path: "/dashboard", icon: <FiHome /> },
-    { name: "Form Input", path: "/document-create", icon: <FiFileText /> },
+    { name: "Document Create", path: "/document-create", icon: <FiFileText /> },
+    { name: "Spare Part List", path: "/sparepart-list", icon: <FiSliders/> },
+    { name: "Settings", path: "/settings", icon: <FiCpu /> },
   ];
 
   return (

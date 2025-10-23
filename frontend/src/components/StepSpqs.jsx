@@ -2,15 +2,24 @@ import { useState, useEffect } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 
+const generateDocNo = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+  
+    const randomNumber = Math.floor(Math.random() * 99999) + 1;
+    const padded = String(randomNumber).padStart(5, "0");
+  
+    return `IM/SPQS/${year}/${month}/${padded}`;
+};
 export default function StepSpqs({ onPrev, onNext, initialData }) {
-  const [data, setData] = useState(
-    initialData || {
-      doc_no: "",
-      part_number: "",
-      date: "",
-      part_description: "",
-      supplier: "",
-      criteria: {
+    const defaultData = {
+        doc_no: generateDocNo(),
+        part_number: "",
+        date: "",
+        part_description: "",
+        supplier: "",
+        criteria: {
         dimension: "",
         weight: "",
         material: "",
@@ -18,21 +27,22 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         function: "",
         completeness: "",
         surface: {
-          wear: false,
-          damage: false,
-          scratch: false,
-          crack: false,
-          corrosion: false,
-          bend: false,
+            wear: false,
+            damage: false,
+            scratch: false,
+            crack: false,
+            corrosion: false,
+            bend: false,
         },
-      },
-      result: "Pass",
-      comment: "",
-      created_by: "",
-      approved_by: "",
-      checked_by: "",
-    }
-  );
+        },
+        result: "Pass",
+        comment: "",
+        created_by: "",
+        approved_by: "",
+        checked_by: "",
+    };
+    
+    const [data, setData] = useState({ ...defaultData, ...initialData });
 
   // Load draft data (optional)
   useEffect(() => {
@@ -101,10 +111,6 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">
-        Step 3 - Spare Part Quality Sheet (SPQS)
-      </h2>
-
       {/* Header Info */}
       <div className="grid grid-cols-2 gap-4">
         {[

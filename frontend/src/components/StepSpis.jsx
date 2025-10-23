@@ -2,14 +2,25 @@ import { useRef, useState, useEffect } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 
+const generateDocNo = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+
+  const randomNumber = Math.floor(Math.random() * 99999) + 1;
+  const padded = String(randomNumber).padStart(5, "0");
+
+  return `IM/SPIS/${year}/${month}/${padded}`;
+};
+
 export default function StepSpis({ onNext, initialData }) {
   const defaultData = {
-    doc_no: "",
+    doc_no: generateDocNo(),
     date: "",
-    location: "Warehouse Jakarta",
+    location: "",
     code: "",
     name: "",
-    department: "Inventory Management",
+    department: "",
     telephone: "",
     part_number: "",
     supplier: "",
@@ -94,17 +105,17 @@ export default function StepSpis({ onNext, initialData }) {
           formData.append(key, data[key]);
         }
       }
-
+  
       const response = await api.post("/spis", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
+  
       console.log("SPIS saved:", response.data);
-      alert("Form SPIS berhasil disimpan!");
+      toast.success("Form SPIS berhasil disimpan!");
       onNext(data);
     } catch (err) {
       console.error("Error saving SPIS:", err);
-      alert("Gagal menyimpan SPIS");
+      toast.error("Gagal menyimpan SPIS ");
     }
   };
 
@@ -169,10 +180,6 @@ export default function StepSpis({ onNext, initialData }) {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">
-        Step 1 - Spare Part Information Sheet (SPIS)
-      </h2>
-
       {/* General Info */}
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -285,23 +292,64 @@ export default function StepSpis({ onNext, initialData }) {
           className="border p-2 w-full rounded mb-3"
         ></textarea>
 
-        <label className="block text-sm mb-1">Upload Photo</label>
-        <input
-          type="file"
-          name="photo"
-          onChange={handleChange}
-          className="border p-2 w-full rounded mb-3"
-        />
-        {data.photo_url && (
-          <div className="mt-2">
-            <p className="text-sm text-gray-600 mb-1">Preview:</p>
-            <img
-              src={data.photo_url}
-              alt="Uploaded"
-              className="w-32 h-32 object-cover rounded border"
-            />
+        <div className="mt-6">
+          <h3 className="font-semibold mb-2">Upload Photo</h3>
+
+          <div className="flex items-stracth gap-6">
+            {/* 🖼️ Preview Image */}
+            <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
+              {data.photo_url || data.photo ? (
+                <img
+                  src={
+                    data.photo_url
+                      ? data.photo_url
+                      : URL.createObjectURL(data.photo)
+                  }
+                  alt="Preview"
+                  className="w-full h-full object-cover rounded-md"
+                />
+              ) : (
+                <span className="text-gray-400 text-sm text-center px-2">
+                  No Image
+                </span>
+              )}
+            </div>
+
+            {/* 📂 Upload Box */}
+            <div className="flex-1">
+              <div className="h-full border-2 border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition">
+                <input
+                  type="file"
+                  name="photo"
+                  id="photoUpload"
+                  onChange={handleChange}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="photoUpload"
+                  className="cursor-pointer bg-blue-600 text-white px-4 py-2 text-xs rounded hover:bg-blue-700 transition"
+                >
+                  Upload Photo
+                </label>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  Format: JPG, PNG, JPEG (max 2MB)
+                </p>
+
+                {/* Tombol Delete */}
+                {(data.photo || data.photo_url) && (
+                  <button
+                    type="button"
+                    onClick={() => setData({ ...data, photo: null, photo_url: null })}
+                    className="mt-3 text-red-500 hover:text-red-700 text-sm font-medium"
+                  >
+                    Delete Photo
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Material */}
@@ -336,7 +384,7 @@ export default function StepSpis({ onNext, initialData }) {
             "remarks",
           ].map((field) => (
             <div key={field}>
-              <label className="block capitalize mb-1">
+              <label className="block capitalize mb-1 text-sm">
                 {field.replace("_", " ")}
               </label>
               <input

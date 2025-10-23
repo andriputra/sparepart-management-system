@@ -1,16 +1,29 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import DocumentCreate from "./pages/DocumentCreate";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SparepartList from "./pages/SparepartList";
 import Register from "./pages/Register";
+import Settings from "./pages/Settings";
 
 export default function App() {
+  const isLoggedIn = !!localStorage.getItem("token"); // ✅ cek token login
+
   return (
     <BrowserRouter>
       <Routes>
+        {/* 🔹 Default route "/" */}
+        <Route
+          path="/"
+          element={
+            isLoggedIn ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+          }
+        />
+
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
         <Route
           path="/dashboard"
           element={
@@ -23,7 +36,23 @@ export default function App() {
           path="/document-create"
           element={
             <ProtectedRoute>
-                <DocumentCreate />
+              <DocumentCreate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sparepart-list"
+          element={
+            <ProtectedRoute>
+              <SparepartList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />

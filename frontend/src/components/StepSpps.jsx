@@ -1,13 +1,24 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+
+const generateDocNo = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+  
+    const randomNumber = Math.floor(Math.random() * 99999) + 1;
+    const padded = String(randomNumber).padStart(5, "0");
+  
+    return `IM/SPPS/${year}/${month}/${padded}`;
+};
 
 export default function StepSpps({ onNext, onPrev, initialData }) {
   const navigate = useNavigate();
 
   const defaultData = {
-    doc_no: "",
+    doc_no: generateDocNo(),
     part_number: "",
     supplier: "",
     part_description: "",
@@ -30,16 +41,18 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     ...initialData,
   });
 
+  const loadedRef = useRef(false);
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
-    if (userId) {
-      api.get(`/spps/draft/${userId}`).then((res) => {
-        if (res.data) {
-          setData((prev) => ({ ...prev, ...res.data }));
-          toast.info("Loaded your saved SPPS draft.");
+    if (userId && !loadedRef.current) {
+        loadedRef.current = true; 
+        api.get(`/spps/draft/${userId}`).then((res) => {
+            if (res.data) {
+            setData((prev) => ({ ...prev, ...res.data }));
+            toast.info("Loaded your saved SPPS draft.");
+            }
+        });
         }
-      });
-    }
   }, []);
 
   const handleChange = (e) => {
@@ -95,9 +108,9 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         toast.warning("Tanggal wajib diisi sebelum lanjut.");
         return;
       }
-      
+
       if (userId) {
-        formData.append("user_id", userId); // tambahkan user_id
+        formData.append("user_id", userId); 
       }
 
       const response = await api.post("/spps", formData, {
@@ -114,10 +127,6 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">
-        Step 2 - Spare Part Package Sheet (SPPS)
-      </h2>
-
       {/* General Info */}
       <div className="grid grid-cols-2 gap-4">
         {[
@@ -178,27 +187,120 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       {/* Upload Illustration */}
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Illustrations</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm mb-1">Illustration Part</label>
-            <input
-              type="file"
-              name="illustration_part"
-              onChange={handleChange}
-              className="border p-2 w-full rounded mb-3"
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Illustration Package</label>
-            <input
-              type="file"
-              name="illustration_package"
-              onChange={handleChange}
-              className="border p-2 w-full rounded mb-3"
-            />
-          </div>
+        <hr/>
+            <div className="mt-4">
+                <p className="mb-2 text-sm">Illustration Part</p>
+                <div className="flex items-stracth gap-6">
+                    <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
+                        {data.photo_url || data.photo ? (
+                            <img
+                            src={
+                                data.photo_url
+                                ? data.photo_url
+                                : URL.createObjectURL(data.photo)
+                            }
+                            alt="Preview"
+                            className="w-full h-full object-cover rounded-md"
+                            />
+                        ) : (
+                            <span className="text-gray-400 text-sm text-center px-2">
+                            No Image
+                            </span>
+                        )}
+                    </div>
+
+                    {/* 📂 Upload Box */}
+                    <div className="flex-1">
+                        <div className="h-full border-2 border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition">
+                            <input
+                                type="file"
+                                name="illustration_part"
+                                id="illustrationPartUpload"
+                                onChange={handleChange}
+                                className="hidden"
+                            />
+                            <label
+                                htmlFor="illustrationPartUpload"
+                                className="cursor-pointer bg-blue-600 text-white px-4 py-2 text-xs rounded hover:bg-blue-700 transition"
+                            >
+                            Upload Photo
+                            </label>
+
+                            <p className="text-xs text-gray-500 mt-2">
+                            Format: JPG, PNG, JPEG (max 2MB)
+                            </p>
+
+                            {/* Tombol Delete */}
+                            {(data.photo || data.photo_url) && (
+                            <button
+                                type="button"
+                                onClick={() => setData({ ...data, photo: null, photo_url: null })}
+                                className="mt-3 text-red-500 hover:text-red-700 text-sm font-medium"
+                            >
+                                Delete Photo
+                            </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div className="mt-4">
+                <p className="mb-2 text-sm">Illustration Package</p>
+                <div className="flex items-stracth gap-6">
+                    <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
+                        {data.photo_url || data.photo ? (
+                            <img
+                            src={
+                                data.photo_url
+                                ? data.photo_url
+                                : URL.createObjectURL(data.photo)
+                            }
+                            alt="Preview"
+                            className="w-full h-full object-cover rounded-md"
+                            />
+                        ) : (
+                            <span className="text-gray-400 text-sm text-center px-2">
+                            No Image
+                            </span>
+                        )}
+                    </div>
+
+                    {/* 📂 Upload Box */}
+                    <div className="flex-1">
+                        <div className="h-full border-2 border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition">
+                            <input
+                                type="file"
+                                name="illustration_package"
+                                id="illustrationPackageUpload"
+                                onChange={handleChange}
+                                className="hidden"
+                            />
+                            <label
+                                htmlFor="illustrationPackageUpload"
+                                className="cursor-pointer bg-blue-600 text-white px-4 py-2 text-xs rounded hover:bg-blue-700 transition"
+                            >
+                            Upload Photo
+                            </label>
+
+                            <p className="text-xs text-gray-500 mt-2">
+                            Format: JPG, PNG, JPEG (max 2MB)
+                            </p>
+
+                            {/* Tombol Delete */}
+                            {(data.photo || data.photo_url) && (
+                            <button
+                                type="button"
+                                onClick={() => setData({ ...data, photo: null, photo_url: null })}
+                                className="mt-3 text-red-500 hover:text-red-700 text-sm font-medium"
+                            >
+                                Delete Photo
+                            </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
 
       {/* Created / Approved */}
       <div className="mt-6 grid grid-cols-2 gap-4">
