@@ -1,35 +1,61 @@
-import { useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import api from "../api/axios";
+import { toast } from "react-toastify";
 
 export default function StepSpis({ onNext, initialData }) {
-  const [data, setData] = useState(
-    initialData || {
-      doc_no: "",
-      date: "",
-      location: "Warehouse Jakarta",
-      code: "",
-      name: "",
-      department: "Inventory Management",
-      telephone: "",
-      part_number: "",
-      supplier: "",
-      part_description: "",
+  const defaultData = {
+    doc_no: "",
+    date: "",
+    location: "Warehouse Jakarta",
+    code: "",
+    name: "",
+    department: "Inventory Management",
+    telephone: "",
+    part_number: "",
+    supplier: "",
+    part_description: "",
+    remarks: "",
+    photo: null,
+    part_material: [],
+    inspection: {
+      visual: "",
+      part_system: "",
+      length: "",
+      width: "",
+      height: "",
+      weight: "",
+      package_dimension: "",
       remarks: "",
-      photo: null,
-      part_material: [],
-      inspection: {
-        visual: "",
-        part_system: "",
-        length: "",
-        width: "",
-        height: "",
-        weight: "",
-        package_dimension: "",
-        remarks: "",
-      },
-      created_by: "",
-      approved_by: "",
+    },
+    created_by: "",
+    approved_by: "",
+  };
+
+  const [data, setData] = useState({
+    ...defaultData,
+    ...initialData,
+    part_material: initialData?.part_material || [],
+    inspection: { ...defaultData.inspection, ...(initialData?.inspection || {}) },
+  });
+  
+  const loadedRef = useRef(false);
+  useEffect(() => {
+    const userId = localStorage.getItem("user_id");
+    if (userId && !loadedRef.current) {
+      loadedRef.current = true; 
+      api.get(`/spis/draft/${userId}`).then((res) => {
+        if (res.data) {
+          setData((prev) => ({
+            ...prev,
+            ...res.data,
+            part_material: res.data.part_material || [],
+            inspection: { ...prev.inspection, ...(res.data.inspection || {}) },
+          }));
+          toast.info("Loaded your saved draft.");
+        }
+      });
     }
-  );
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -56,15 +82,95 @@ export default function StepSpis({ onNext, initialData }) {
     });
   };
 
-  const handleNext = () => {
-    console.log("SPIS Data:", data);
-    onNext(data);
+  const handleNext = async () => {
+    try {
+      const formData = new FormData();
+      for (const key in data) {
+        if (key === "photo" && data.photo) {
+          formData.append("photo", data.photo);
+        } else if (key === "inspection" || key === "part_material") {
+          formData.append(key, JSON.stringify(data[key]));
+        } else {
+          formData.append(key, data[key]);
+        }
+      }
+
+      const response = await api.post("/spis", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      console.log("SPIS saved:", response.data);
+      alert("Form SPIS berhasil disimpan!");
+      onNext(data);
+    } catch (err) {
+      console.error("Error saving SPIS:", err);
+      alert("Gagal menyimpan SPIS");
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      const userId = localStorage.getItem("user_id");
+      const token = localStorage.getItem("token");
+  
+      if (!userId || !token) {
+        toast.error("Please login first.");
+        return;
+      }
+  
+      if (!data.part_number && !data.name) {
+        toast.warning("Isi minimal Part Number atau Name sebelum menyimpan draft.");
+        return;
+      }
+  
+      let photoUrl = data.photo_url || null;
+  
+      // Jika user upload foto baru (File object)
+      if (data.photo instanceof File) {
+        const formData = new FormData();
+        formData.append("photo", data.photo);
+  
+        const uploadRes = await api.post("/spis/upload-photo", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        photoUrl = uploadRes.data.photo_url;
+      }
+  
+      // Siapkan data draft
+      const draftData = { ...data, photo_url: photoUrl };
+      delete draftData.photo; // hapus file object biar tidak error JSON
+  
+      // Simpan draft ke backend
+      await api.post(
+        "/spis/save-draft",
+        {
+          user_id: userId,
+          data: draftData,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+  
+      toast.success("Draft saved successfully!");
+    } catch (err) {
+      console.error("Error saving draft:", err);
+      if (err.response?.status === 401) {
+        toast.error("Session expired, please login again.");
+      } else {
+        toast.error("Failed to save draft. Please try again.");
+      }
+    }
   };
 
   return (
     <div>
       <h2 className="text-xl font-semibold mb-4">
-        Step 1 - Service Part Information Sheet (SPIS)
+        Step 1 - Spare Part Information Sheet (SPIS)
       </h2>
 
       {/* General Info */}
@@ -186,33 +292,33 @@ export default function StepSpis({ onNext, initialData }) {
           onChange={handleChange}
           className="border p-2 w-full rounded mb-3"
         />
+        {data.photo_url && (
+          <div className="mt-2">
+            <p className="text-sm text-gray-600 mb-1">Preview:</p>
+            <img
+              src={data.photo_url}
+              alt="Uploaded"
+              className="w-32 h-32 object-cover rounded border"
+            />
+          </div>
+        )}
       </div>
 
       {/* Material */}
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Part Material</h3>
-        {["Rubber", "Metal", "Plastic", "Glass"].map((m) => (
+        {["Rubber", "Metal", "Plastic", "Glass", "Other"].map((m) => (
           <label key={m} className="mr-4">
             <input
               type="checkbox"
               value={m}
-              checked={data.part_material.includes(m)}
+              checked={data.part_material?.includes(m)}
               onChange={handleMaterialChange}
               className="mr-1"
             />
             {m}
           </label>
         ))}
-        <label className="ml-4">
-          <input
-            type="checkbox"
-            value="Other"
-            checked={data.part_material.includes("Other")}
-            onChange={handleMaterialChange}
-            className="mr-1"
-          />
-          Other
-        </label>
       </div>
 
       {/* Inspection */}
@@ -269,10 +375,26 @@ export default function StepSpis({ onNext, initialData }) {
         </div>
       </div>
 
-      {/* Next */}
-      <div className="mt-6 text-right">
+      <div className="mt-6 flex justify-between">
+        <div className="flex gap-2">
+        <button
+          onClick={handleSaveDraft}
+          type="button"
+          className="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400"
+        >
+          Save Draft
+        </button>
+        <button
+          onClick={() => navigate("/spis-preview", { state: { data } })}
+          type="button"
+          className="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600"
+        >
+          Preview
+        </button>
+        </div>
         <button
           onClick={handleNext}
+          type="button"
           className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
         >
           Next
