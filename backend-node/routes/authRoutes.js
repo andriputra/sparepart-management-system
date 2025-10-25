@@ -9,15 +9,19 @@ const router = express.Router();
 
 // === REGISTER ===
 router.post("/register", async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, fullname, email, password, role } = req.body;
 
   try {
     const hashed = await bcrypt.hash(password, 10);
+    const allowedRoles = ["admin", "approval", "viewer"];
+    const userRole = allowedRoles.includes(role) ? role : "viewer";
+
     await db.query(
-      "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
-      [name, email, hashed, role || "approval"]
+      "INSERT INTO users (name, fullname, email, password, role) VALUES (?, ?, ?, ?, ?)",
+      [name, fullname, email, hashed, userRole || "approval"]
     );
-    res.status(201).json({ message: "User registered successfully" });
+
+    res.status(201).json({ message: `User registered successfully as ${userRole}` });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Registration failed" });
@@ -48,5 +52,21 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Login failed" });
   }
 });
+// === GET USER INFO ===
+router.get("/user/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const [rows] = await db.query("SELECT id, name, fullname, department, telephone, email, role FROM users WHERE id = ?", [id]);
+  
+      if (rows.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      res.json(rows[0]);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch user info" });
+    }
+  });
 
 export default router;

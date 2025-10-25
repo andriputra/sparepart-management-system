@@ -19,7 +19,7 @@ const upload = multer({ storage });
 router.get("/profile", authenticate, async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT id, name, email, fullname, role, signature_url FROM users WHERE id = ?",
+      "SELECT id, name, email, fullname, department, telephone, role, signature_url FROM users WHERE id = ?",
       [req.user.id]
     );
     res.json(rows[0]);
@@ -31,17 +31,17 @@ router.get("/profile", authenticate, async (req, res) => {
 
 // === Ubah fullname ===
 router.put("/profile", authenticate, async (req, res) => {
-  const { fullname } = req.body;
-  try {
-    await db.query("UPDATE users SET fullname = ? WHERE id = ?", [
-      fullname,
-      req.user.id,
-    ]);
-    res.json({ message: "Nama berhasil diperbarui" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Gagal update nama" });
-  }
+    const { fullname, department, telephone } = req.body;
+    try {
+      await db.query(
+        "UPDATE users SET fullname = ?, department = ?, telephone = ? WHERE id = ?",
+        [fullname, department, telephone, req.user.id]
+      );
+      res.json({ message: "Data Profil berhasil diperbarui" });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Gagal update profil" });
+    }
 });
 
 // === Ubah password ===
@@ -66,20 +66,20 @@ router.put("/password", authenticate, async (req, res) => {
 
 // === Upload tanda tangan ===
 router.post("/signature", authenticate, upload.single("signature"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    try {
+        if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    const signatureUrl = `/uploads/signatures/${req.file.filename}`;
-    await db.query("UPDATE users SET signature_url = ? WHERE id = ?", [
-      signatureUrl,
-      req.user.id,
-    ]);
+        const signatureUrl = `/uploads/signatures/${req.file.filename}`;
+        await db.query("UPDATE users SET signature_url = ? WHERE id = ?", [
+        signatureUrl,
+        req.user.id,
+        ]);
 
-    res.json({ signature_url: signatureUrl });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Gagal upload tanda tangan" });
-  }
+        res.json({ signature_url: signatureUrl });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Gagal upload tanda tangan" });
+    }
 });
 
 export default router;

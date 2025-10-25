@@ -1,53 +1,102 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 
-const generateDocNo = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-  
-    const randomNumber = Math.floor(Math.random() * 99999) + 1;
-    const padded = String(randomNumber).padStart(5, "0");
-  
-    return `IM/SPQS/${year}/${month}/${padded}`;
+const generateDocNo = async () => {
+    try {
+      const res = await api.get("/spqs/next-docno");
+      return res.data.nextDocNo;
+    } catch (err) {
+      console.error("Failed to get doc no:", err);
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      return `IM/SPQS/${year}/${month}/00001`;
+    }
 };
-export default function StepSpqs({ onPrev, onNext, initialData }) {
-    const defaultData = {
-        doc_no: generateDocNo(),
-        part_number: "",
-        date: "",
-        part_description: "",
-        supplier: "",
-        criteria: {
-        dimension: "",
-        weight: "",
-        material: "",
-        finishing: "",
-        function: "",
-        completeness: "",
-        surface: {
-            wear: false,
-            damage: false,
-            scratch: false,
-            crack: false,
-            corrosion: false,
-            bend: false,
-        },
-        },
-        result: "Pass",
-        comment: "",
-        created_by: "",
-        approved_by: "",
-        checked_by: "",
-    };
-    
-    const [data, setData] = useState({ ...defaultData, ...initialData });
 
-  // Load draft data (optional)
+export default function StepSpqs({ onPrev, onNext, initialData }) {
+  const defaultData = {
+    doc_no: "",
+    part_number: "",
+    date: "",
+    part_description: "",
+    supplier: "",
+    criteria: {
+      dimension: "",
+      weight: "",
+      material: "",
+      finishing: "",
+      function: "",
+      completeness: "",
+      surface: {
+        wear: false,
+        damage: false,
+        scratch: false,
+        crack: false,
+        corrosion: false,
+        bend: false,
+      },
+    },
+    result: "Pass",
+    comment: "",
+    created_by: "",
+    approved_by: "",
+    checked_by: "",
+  };
+
+  const [data, setData] = useState({ ...defaultData, ...initialData });
+  
+//   useEffect(() => {
+//     if (initialData?.date) {
+//       setData((prev) => ({ ...prev, date: initialData.date }));
+//     }
+//   }, [initialData?.date]);
+
+  const loadedRef = useRef(false);
+
+  // 🔹 Load full_name user yang login
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const userId = localStorage.getItem("user_id");
+        if (!userId) return;
+
+        // Ambil info user dari backend
+        const res = await api.get(`/auth/user/${userId}`);
+        const fullName = res.data?.fullname || "";
+
+        setData((prev) => ({ ...prev, created_by: fullName }));
+      } catch (err) {
+        console.error("Failed to fetch user name:", err);
+      }
+    };
+
+    fetchUserName();
+  }, []);
+
+  useEffect(() => {
+    const initDocNo = async () => {
+      const savedDocNo = localStorage.getItem("spqs_doc_no");
+      if (savedDocNo) {
+        setData((prev) => ({ ...prev, doc_no: savedDocNo }));
+        return;
+      }
+  
+      const newDocNo = await generateDocNo();
+      setData((prev) => ({ ...prev, doc_no: newDocNo }));
+      localStorage.setItem("spqs_doc_no", newDocNo);
+    };
+  
+    initDocNo();
+  }, []);
+
+
+  // 🔹 Load draft SPQS (jika ada)
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
-    if (userId) {
+    if (userId && !loadedRef.current) {
+      loadedRef.current = true;
       api.get(`/spqs/draft/${userId}`).then((res) => {
         if (res.data) {
           setData(res.data);
@@ -100,9 +149,22 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
 
   const handleSubmit = async () => {
     try {
-      await api.post("/spqs", data);
+      const userId = localStorage.getItem("user_id");
+      if (!userId) {
+        toast.error("Please login first.");
+        return;
+      }
+
+      const payload = {
+        ...data,
+        user_id: userId,
+      };
+
+      await api.post("/spqs", payload);
       toast.success("SPQS submitted successfully!");
       onNext && onNext(data);
+      localStorage.removeItem("spis_doc_no");
+      localStorage.removeItem("spps_doc_no");
     } catch (err) {
       console.error(err);
       toast.error("Failed to submit SPQS");
@@ -114,7 +176,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
       {/* Header Info */}
       <div className="grid grid-cols-2 gap-4">
         {[
-          { label: "Doc No", name: "doc_no", type: "text" },
+          { label: "Doc No", name: "doc_no", type: "text", readOnly: true },
           { label: "Date", name: "date", type: "date" },
           { label: "Part Number", name: "part_number", type: "text" },
           { label: "Supplier", name: "supplier", type: "text" },
@@ -123,11 +185,13 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
           <div key={f.name}>
             <label className="block text-sm mb-1">{f.label}</label>
             <input
-              type={f.type}
-              name={f.name}
-              value={data[f.name]}
-              onChange={handleChange}
-              className="border p-2 w-full rounded"
+                type={f.type}
+                name={f.name}
+                value={data[f.name]}
+                onChange={handleChange}
+                className={`border p-2 w-full rounded ${
+                    f.readOnly ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""
+                }`}
             />
           </div>
         ))}
@@ -211,22 +275,36 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
 
       {/* Signature */}
       <div className="mt-6 grid grid-cols-3 gap-4">
-        {[
-          { label: "Created By", name: "created_by" },
-          { label: "Approved By", name: "approved_by" },
-          { label: "Checked By", name: "checked_by" },
-        ].map((f) => (
-          <div key={f.name}>
-            <label className="block text-sm mb-1">{f.label}</label>
-            <input
-              type="text"
-              name={f.name}
-              value={data[f.name]}
-              onChange={handleChange}
-              className="border p-2 w-full rounded"
-            />
-          </div>
-        ))}
+        <div>
+          <label className="block text-sm mb-1">Created By</label>
+          <input
+            type="text"
+            name="created_by"
+            value={data.created_by}
+            readOnly
+            className="border p-2 w-full rounded bg-gray-100 text-gray-600 cursor-not-allowed"
+          />
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Approved By</label>
+          <input
+            type="text"
+            name="approved_by"
+            value={data.approved_by}
+            onChange={handleChange}
+            className="border p-2 w-full rounded"
+          />
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Checked By</label>
+          <input
+            type="text"
+            name="checked_by"
+            value={data.checked_by}
+            onChange={handleChange}
+            className="border p-2 w-full rounded"
+          />
+        </div>
       </div>
 
       {/* Buttons */}

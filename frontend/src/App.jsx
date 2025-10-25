@@ -8,7 +8,8 @@ import Register from "./pages/Register";
 import Settings from "./pages/Settings";
 
 export default function App() {
-  const isLoggedIn = !!localStorage.getItem("token"); // ✅ cek token login
+  const isLoggedIn = !!localStorage.getItem("token"); 
+  const userRole = localStorage.getItem("role")?.trim();
 
   return (
     <BrowserRouter>
@@ -35,9 +36,13 @@ export default function App() {
         <Route
           path="/document-create"
           element={
-            <ProtectedRoute>
-              <DocumentCreate />
-            </ProtectedRoute>
+            userRole === "admin" ? (
+              <ProtectedRoute>
+                <DocumentCreate />
+              </ProtectedRoute>
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
           }
         />
         <Route

@@ -3,22 +3,24 @@ import api from "../api/axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
-const generateDocNo = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-  
-    const randomNumber = Math.floor(Math.random() * 99999) + 1;
-    const padded = String(randomNumber).padStart(5, "0");
-  
-    return `IM/SPPS/${year}/${month}/${padded}`;
+const generateDocNo = async () => {
+    try {
+      const res = await api.get("/spps/next-docno");
+      return res.data.nextDocNo;
+    } catch (err) {
+      console.error("Failed to get doc no:", err);
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      return `IM/SPPS/${year}/${month}/00001`;
+    }
 };
 
 export default function StepSpps({ onNext, onPrev, initialData }) {
   const navigate = useNavigate();
 
   const defaultData = {
-    doc_no: generateDocNo(),
+    doc_no: "",
     part_number: "",
     supplier: "",
     part_description: "",
@@ -41,7 +43,50 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     ...initialData,
   });
 
+  // useEffect(() => {
+  //   if (initialData?.date) {
+  //     setData((prev) => ({ ...prev, date: initialData.date }));
+  //   }
+  // }, [initialData?.date]);
+
   const loadedRef = useRef(false);
+
+  useEffect(() => {
+    const initDocNo = async () => {
+      const savedDocNo = localStorage.getItem("spps_doc_no");
+      if (savedDocNo) {
+        setData((prev) => ({ ...prev, doc_no: savedDocNo }));
+        return;
+      }
+  
+      const newDocNo = await generateDocNo();
+      setData((prev) => ({ ...prev, doc_no: newDocNo }));
+      localStorage.setItem("spps_doc_no", newDocNo);
+    };
+  
+    initDocNo();
+  }, []);
+
+  // 🔹 Load full_name user yang login
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const userId = localStorage.getItem("user_id");
+        if (!userId) return;
+
+        // Ambil info user dari backend
+        const res = await api.get(`/auth/user/${userId}`);
+        const fullName = res.data?.fullname || "";
+
+        setData((prev) => ({ ...prev, created_by: fullName }));
+      } catch (err) {
+        console.error("Failed to fetch user name:", err);
+      }
+    };
+
+    fetchUserName();
+  }, []);
+
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
     if (userId && !loadedRef.current) {
@@ -92,64 +137,68 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     }
   };
 
-  const handleNext = async () => {
-    try {
-      const formData = new FormData();
-      const userId = localStorage.getItem("user_id")
-      Object.keys(data).forEach((key) => {
-        if (data[key] instanceof File) {
-          formData.append(key, data[key]);
-        } else {
-          formData.append(key, data[key]);
+    const handleNext = async () => {
+        try {
+        const formData = new FormData();
+        const userId = localStorage.getItem("user_id");
+        const spisId = localStorage.getItem("spis_id"); 
+    
+        if (!spisId) {
+            toast.error("SPIS ID tidak ditemukan. Silakan mulai dari Step 1 (SPIS).");
+            return;
         }
-      });
-
-      if (!data.date) {
-        toast.warning("Tanggal wajib diisi sebelum lanjut.");
-        return;
-      }
-
-      if (userId) {
-        formData.append("user_id", userId); 
-      }
-
-      const response = await api.post("/spps", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      toast.success("SPPS saved successfully!");
-      onNext(data);
-    } catch (err) {
-      console.error("Error saving SPPS:", err);
-      toast.error("Failed to save SPPS");
-    }
-  };
+    
+        Object.keys(data).forEach((key) => {
+            if (data[key] instanceof File) {
+            formData.append(key, data[key]);
+            } else {
+            formData.append(key, data[key]);
+            }
+        });
+    
+        formData.append("spis_id", spisId);
+        formData.append("user_id", userId);
+    
+        const response = await api.post("/spps", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
+    
+        toast.success("SPPS saved successfully!");
+        onNext(data);
+        } catch (err) {
+        console.error("Error saving SPPS:", err);
+        toast.error("Failed to save SPPS");
+        }
+    };
 
   return (
     <div>
       {/* General Info */}
       <div className="grid grid-cols-2 gap-4">
         {[
-          { label: "Doc No", name: "doc_no", type: "text" },
-          { label: "Date", name: "date", type: "date" },
-          { label: "Part Number", name: "part_number", type: "text" },
-          { label: "Supplier", name: "supplier", type: "text" },
-          { label: "Part Description", name: "part_description", type: "text" },
-          { label: "Remarks", name: "remarks", type: "text" },
-          { label: "Qty", name: "qty", type: "number" },
-          { label: "Part Weight (Kg)", name: "part_weight", type: "text" },
-          { label: "Part Dimension (mm)", name: "part_dimension", type: "text" },
+            { label: "Doc No", name: "doc_no", type: "text", readOnly: true },
+            { label: "Date", name: "date", type: "date" },
+            { label: "Part Number", name: "part_number", type: "text" },
+            { label: "Supplier", name: "supplier", type: "text" },
+            { label: "Part Description", name: "part_description", type: "text" },
+            { label: "Remarks", name: "remarks", type: "text" },
+            { label: "Qty", name: "qty", type: "number" },
+            { label: "Part Weight (Kg)", name: "part_weight", type: "text" },
+            { label: "Part Dimension (mm)", name: "part_dimension", type: "text" },
         ].map((f) => (
-          <div key={f.name}>
-            <label className="block text-sm mb-1">{f.label}</label>
-            <input
-              type={f.type}
-              name={f.name}
-              value={data[f.name]}
-              onChange={handleChange}
-              className="border p-2 w-full rounded"
-            />
-          </div>
+            <div key={f.name}>
+                <label className="block text-sm mb-1">{f.label}</label>
+                <input
+                    type={f.type}
+                    name={f.name}
+                    value={data[f.name]}
+                    onChange={handleChange}
+                    readOnly={f.readOnly || false}
+                    className={`border p-2 w-full rounded ${
+                        f.readOnly ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""
+                }`}
+                />
+            </div>
         ))}
       </div>
 
@@ -311,7 +360,8 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
             name="created_by"
             value={data.created_by}
             onChange={handleChange}
-            className="border p-2 w-full rounded"
+            readOnly
+            className="border p-2 w-full rounded bg-gray-100 text-gray-600 cursor-not-allowed"
           />
         </div>
         <div>

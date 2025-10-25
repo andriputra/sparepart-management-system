@@ -9,9 +9,15 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT id, doc_no, name, status, updated_at, created_by 
-      FROM spis 
-      ORDER BY updated_at DESC
+        SELECT 
+            spis.id,
+            spis.doc_no,
+            spis.name,
+            spis.status,
+            spis.progress_status,
+            spis.updated_at
+        FROM spis
+        ORDER BY spis.updated_at DESC
     `);
     res.json(rows);
   } catch (err) {

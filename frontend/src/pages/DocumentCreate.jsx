@@ -113,8 +113,8 @@ export default function DocumentCreate() {
 
         {step === 1 && (
             <StepSpis 
-                onNext={handleNext}
-                initialData={formData.spis} 
+                onNext={handleNext} i
+                nitialData={formData.spis} 
             />
         )}
         {step === 2 && (

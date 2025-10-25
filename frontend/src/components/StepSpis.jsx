@@ -1,21 +1,27 @@
 import { useRef, useState, useEffect } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import { FiTrash2 } from "react-icons/fi";
 
-const generateDocNo = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
+const generateDocNo = async () => {
+  try {
+    const res = await api.get("/spis/next-docno");
+    return res.data.nextDocNo;
+  } catch (err) {
+    console.error("Failed to generate doc no:", err);
 
-  const randomNumber = Math.floor(Math.random() * 99999) + 1;
-  const padded = String(randomNumber).padStart(5, "0");
-
-  return `IM/SPIS/${year}/${month}/${padded}`;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    return `IM/SPIS/${year}/${month}/00001`;
+  }
 };
 
 export default function StepSpis({ onNext, initialData }) {
+  const navigate = useNavigate();
   const defaultData = {
-    doc_no: generateDocNo(),
+    doc_no: "",
     date: "",
     location: "",
     code: "",
@@ -50,6 +56,71 @@ export default function StepSpis({ onNext, initialData }) {
   });
   
   const loadedRef = useRef(false);
+
+  // 🔹 Load full_name, department, dan telephone user yang login
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const userId = localStorage.getItem("user_id");
+        if (!userId) return;
+
+        // Ambil info user dari backend
+        const res = await api.get(`/auth/user/${userId}`);
+        const user = res.data;
+
+        console.log("Fetched user info:", user);
+
+        setData((prev) => ({
+          ...prev,
+          name: user.fullname || prev.name,
+          department: user.department || prev.department,
+          telephone: user.telephone || prev.telephone,
+          created_by: user.fullname || prev.created_by,
+        }));
+      } catch (err) {
+        console.error("Failed to fetch user info:", err);
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      const existingDocNo = localStorage.getItem("spis_doc_no");
+      if (existingDocNo) {
+        setData((prev) => ({ ...prev, doc_no: existingDocNo }));
+        return;
+      }
+      
+      const newDocNo = await generateDocNo();
+      setData((prev) => ({ ...prev, doc_no: newDocNo }));
+      localStorage.setItem("spis_doc_no", newDocNo);
+    };
+  
+    fetchInitialData();
+  }, []);
+
+  // 🔹 Load full_name user yang login
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const userId = localStorage.getItem("user_id");
+        if (!userId) return;
+
+        // Ambil info user dari backend
+        const res = await api.get(`/auth/user/${userId}`);
+        const fullName = res.data?.fullname || "";
+
+        setData((prev) => ({ ...prev, created_by: fullName }));
+      } catch (err) {
+        console.error("Failed to fetch user name:", err);
+      }
+    };
+
+    fetchUserName();
+  }, []);
+  
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
     if (userId && !loadedRef.current) {
@@ -79,10 +150,20 @@ export default function StepSpis({ onNext, initialData }) {
 
   const handleMaterialChange = (e) => {
     const { value, checked } = e.target;
-    const updated = checked
-      ? [...data.part_material, value]
-      : data.part_material.filter((m) => m !== value);
-    setData({ ...data, part_material: updated });
+    setData((prev) => {
+      let updated = prev.part_material || [];
+  
+      if (checked) {
+        updated = [...updated, value];
+      } else {
+        updated = updated.filter((m) => m !== value);
+        if (value === "Other") {
+          return { ...prev, part_material: updated, other_material: "" };
+        }
+      }
+  
+      return { ...prev, part_material: updated };
+    });
   };
 
   const handleInspectionChange = (e) => {
@@ -94,30 +175,94 @@ export default function StepSpis({ onNext, initialData }) {
   };
 
   const handleNext = async () => {
-    try {
-      const formData = new FormData();
-      for (const key in data) {
-        if (key === "photo" && data.photo) {
-          formData.append("photo", data.photo);
-        } else if (key === "inspection" || key === "part_material") {
-          formData.append(key, JSON.stringify(data[key]));
-        } else {
-          formData.append(key, data[key]);
-        }
+  try {
+    const requiredFields = [
+      { key: "doc_no", label: "SPPS Doc No" },
+      { key: "date", label: "Date" },
+      { key: "name", label: "Name" },
+      { key: "location", label: "Location" },
+      { key: "department", label: "Departemen" },
+      { key: "code", label: "Kode" },
+      { key: "telephone", label: "Telepon" },
+      { key: "part_number", label: "Part Number" },
+      { key: "part_description", label: "Part Deskripsi" },
+      { key: "supplier", label: "Supplier" },
+      { key: "detail_part", label: "Detail Part" },
+      { key: "description", label: "Keterangan" },
+    ];
+
+    for (const field of requiredFields) {
+      if (!data[field.key] || data[field.key].toString().trim() === "") {
+        toast.error(`${field.label} wajib diisi.`);
+        return;
       }
-  
-      const response = await api.post("/spis", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-  
-      console.log("SPIS saved:", response.data);
-      toast.success("Form SPIS berhasil disimpan!");
-      onNext(data);
-    } catch (err) {
-      console.error("Error saving SPIS:", err);
-      toast.error("Gagal menyimpan SPIS ");
     }
-  };
+
+    // 🔹 Validasi part material
+    if (!data.part_material || data.part_material.length === 0) {
+      toast.error("Part Material wajib dipilih.");
+      return;
+    }
+
+    // 🔹 Validasi inspection
+    const requiredInspection = [
+      "visual_condition",
+      "part_system",
+      "length",
+      "width",
+      "height",
+      "weight",
+      "package_dimension",
+    ];
+    for (const field of requiredInspection) {
+      if (!data.inspection[field] || data.inspection[field].toString().trim() === "") {
+        toast.error(`${field.replace("_", " ")} wajib diisi.`);
+        return;
+      }
+    }
+
+    const userId = localStorage.getItem("user_id");
+    if (!userId) {
+      toast.error("Please login first.");
+      return;
+    }
+
+    // 🔸 Gabungkan “Other” dengan teksnya
+    let finalMaterials = data.part_material || [];
+    if (finalMaterials.includes("Other") && data.other_material) {
+      finalMaterials = finalMaterials.map((m) =>
+        m === "Other" ? `Other: ${data.other_material}` : m
+      );
+    }
+
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (key === "photo" && data.photo instanceof File) {
+        formData.append("photo", data.photo);
+      } else if (key === "inspection" || key === "part_material") {
+        const value =
+          key === "part_material" ? finalMaterials : data[key];
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, data[key]);
+      }
+    });
+
+    formData.append("user_id", userId);
+    formData.append("status", "submitted");
+
+    const response = await api.post("/spis", formData);
+
+    const spisId = response.data.id || localStorage.getItem("spis_id") || null;
+    if (spisId) localStorage.setItem("spis_id", spisId);
+
+    toast.success(response.data.message || "SPIS berhasil disimpan!");
+    onNext({ ...data, spis_id: spisId });
+  } catch (err) {
+    console.error("Error saving SPIS:", err);
+    toast.error("Gagal menyimpan SPIS");
+  }
+};
 
   const handleSaveDraft = async () => {
     try {
@@ -152,10 +297,15 @@ export default function StepSpis({ onNext, initialData }) {
       }
   
       // Siapkan data draft
-      const draftData = { ...data, photo_url: photoUrl };
-      delete draftData.photo; // hapus file object biar tidak error JSON
-  
-      // Simpan draft ke backend
+      let finalMaterials = data.part_material || [];
+      if (finalMaterials.includes("Other") && data.other_material) {
+        finalMaterials = finalMaterials.map((m) =>
+          m === "Other" ? `Other: ${data.other_material}` : m
+        );
+      }
+
+      const draftData = { ...data, photo_url: photoUrl, part_material: finalMaterials };
+      delete draftData.photo; 
       await api.post(
         "/spis/save-draft",
         {
@@ -183,74 +333,82 @@ export default function StepSpis({ onNext, initialData }) {
       {/* General Info */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm mb-1">Doc No.</label>
+          <label className="block text-sm mb-1">Doc No. <span className="text-red-500">*</span></label>
           <input
             type="text"
             name="doc_no"
             value={data.doc_no}
             onChange={handleChange}
-            className="border p-2 w-full rounded"
+            className="border p-2 w-full rounded bg-gray-100 text-gray-600 cursor-not-allowed"
             placeholder="Auto / Manual"
+            readOnly
+            required
           />
         </div>
         <div>
-          <label className="block text-sm mb-1">Date</label>
+          <label className="block text-sm mb-1">Date <span className="text-red-500">*</span></label>
           <input
             type="date"
             name="date"
             value={data.date}
             onChange={handleChange}
             className="border p-2 w-full rounded"
+            required
           />
         </div>
         <div>
-          <label className="block text-sm mb-1">Location</label>
+          <label className="block text-sm mb-1">Location <span className="text-red-500">*</span></label>
           <input
             type="text"
             name="location"
             value={data.location}
             onChange={handleChange}
             className="border p-2 w-full rounded"
+            required
           />
         </div>
         <div>
-          <label className="block text-sm mb-1">Code</label>
+          <label className="block text-sm mb-1">Code <span className="text-red-500">*</span></label>
           <input
             type="text"
             name="code"
             value={data.code}
             onChange={handleChange}
             className="border p-2 w-full rounded"
+            required
           />
         </div>
         <div>
-          <label className="block text-sm mb-1">Name</label>
+          <label className="block text-sm mb-1">Name <span className="text-red-500">*</span></label>
           <input
             type="text"
             name="name"
             value={data.name}
             onChange={handleChange}
             className="border p-2 w-full rounded"
+            required
           />
         </div>
         <div>
-          <label className="block text-sm mb-1">Department</label>
+          <label className="block text-sm mb-1">Department <span className="text-red-500">*</span></label>
           <input
             type="text"
             name="department"
             value={data.department}
             onChange={handleChange}
             className="border p-2 w-full rounded"
+            required
           />
         </div>
         <div>
-          <label className="block text-sm mb-1">Telephone</label>
+          <label className="block text-sm mb-1">Telephone <span className="text-red-500">*</span></label>
           <input
             type="text"
             name="telephone"
             value={data.telephone}
             onChange={handleChange}
             className="border p-2 w-full rounded"
+            required
           />
         </div>
       </div>
@@ -258,45 +416,107 @@ export default function StepSpis({ onNext, initialData }) {
       {/* Part Info */}
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Part Details</h3>
-        <label className="block text-sm mb-1">Part Number</label>
+        <label className="block text-sm mb-1">Part Number <span className="text-red-500">*</span></label>
         <input
           type="text"
           name="part_number"
           value={data.part_number}
           onChange={handleChange}
           className="border p-2 w-full rounded mb-3"
+          required
         />
 
-        <label className="block text-sm mb-1">Supplier</label>
+        <label className="block text-sm mb-1">Supplier <span className="text-red-500">*</span></label>
         <input
           type="text"
           name="supplier"
           value={data.supplier}
           onChange={handleChange}
           className="border p-2 w-full rounded mb-3"
+          required
         />
 
-        <label className="block text-sm mb-1">Part Description</label>
+        <label className="block text-sm mb-1">Part Description <span className="text-red-500">*</span></label>
         <textarea
           name="part_description"
           value={data.part_description}
           onChange={handleChange}
           className="border p-2 w-full rounded mb-3"
+          required
         ></textarea>
 
-        <label className="block text-sm mb-1">Remarks</label>
+        <label className="block text-sm mb-1">Detail Part <span className="text-red-500">*</span></label>
         <textarea
-          name="remarks"
-          value={data.remarks}
+          name="detail_part"
+          value={data.detail_part}
           onChange={handleChange}
           className="border p-2 w-full rounded mb-3"
+          required
         ></textarea>
 
         <div className="mt-6">
-          <h3 className="font-semibold mb-2">Upload Photo</h3>
-
+          <h3 className="font-semibold mb-2">Upload Part Image</h3>
+          
+          <p className="text-sm mb-2">Part Image 1 <span className="text-red-500">*</span></p>
           <div className="flex items-stracth gap-6">
             {/* 🖼️ Preview Image */}
+            
+            <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
+              {data.photo_url || data.photo ? (
+                <img
+                  src={
+                    data.photo_url
+                      ? data.photo_url
+                      : URL.createObjectURL(data.photo)
+                  }
+                  alt="Preview"
+                  className="w-full h-full object-cover rounded-md"
+                />
+              ) : (
+                <span className="text-gray-400 text-sm text-center px-2">
+                  No Image
+                </span>
+              )}
+            </div>
+
+            {/* 📂 Upload Box */}
+            <div className="flex-1">
+              <div className="h-full border-2 border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition">
+                <input
+                  type="file"
+                  name="photo"
+                  id="photoUpload"
+                  onChange={handleChange}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="photoUpload"
+                  className="cursor-pointer bg-blue-600 text-white px-4 py-2 text-xs rounded hover:bg-blue-700 transition"
+                >
+                  Upload Photo
+                </label>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  Format: JPG, PNG, JPEG (max 2MB)
+                </p>
+
+                {/* Tombol Delete */}
+                {(data.photo || data.photo_url) && (
+                  <button
+                    type="button"
+                    onClick={() => setData({ ...data, photo: null, photo_url: null })}
+                    className="mt-3 text-red-500 hover:text-red-700 text-sm font-medium"
+                  >
+                    Delete Photo
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          <p className="text-sm mt-3 mb-2">Part Image 2 <span className="text-red-500">*</span></p>
+          <div className="flex items-stracth gap-6">
+            {/* 🖼️ Preview Image */}
+            
             <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
               {data.photo_url || data.photo ? (
                 <img
@@ -355,8 +575,8 @@ export default function StepSpis({ onNext, initialData }) {
       {/* Material */}
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Part Material</h3>
-        {["Rubber", "Metal", "Plastic", "Glass", "Other"].map((m) => (
-          <label key={m} className="mr-4">
+          {["Rubber", "Metal", "Platic", "Glass", "Other"].map((m) => (
+          <label key={m} className="mr-4 inline-flex items-center">
             <input
               type="checkbox"
               value={m}
@@ -367,6 +587,24 @@ export default function StepSpis({ onNext, initialData }) {
             {m}
           </label>
         ))}
+
+        {/* Jika user memilih "Other" maka tampilkan input tambahan */}
+        {data.part_material?.includes("Other") && (
+          <div className="mt-3">
+            <label className="block text-sm text-gray-700 mb-1">
+              Please specify other material:
+            </label>
+            <input
+              type="text"
+              value={data.other_material || ""}
+              onChange={(e) =>
+                setData((prev) => ({ ...prev, other_material: e.target.value }))
+              }
+              placeholder="Enter material name"
+              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+          </div>
+        )}
       </div>
 
       {/* Inspection */}
@@ -374,33 +612,175 @@ export default function StepSpis({ onNext, initialData }) {
         <h3 className="font-semibold mb-2">Inspection Detail</h3>
         <div className="grid grid-cols-2 gap-4">
           {[
-            "visual",
+            "visual_condition",
             "part_system",
             "length",
             "width",
             "height",
             "weight",
             "package_dimension",
-            "remarks",
-          ].map((field) => (
-            <div key={field}>
-              <label className="block capitalize mb-1 text-sm">
-                {field.replace("_", " ")}
-              </label>
-              <input
-                type="text"
-                name={field}
-                value={data.inspection[field]}
-                onChange={handleInspectionChange}
-                className="border p-2 w-full rounded"
-              />
-            </div>
-          ))}
+          ].map((field) => {
+            // Tentukan satuan berdasarkan field
+            let suffix = "";
+            if (["length", "width", "height"].includes(field)) {
+              suffix = "mm";
+            } else if (field === "weight") {
+              suffix = "kg";
+            }
+
+            // Apakah field ini hanya boleh angka?
+            const isNumeric = ["length", "width", "height", "weight", "package_dimension"].includes(field);
+
+            return (
+              <div key={field}>
+                <label className="block capitalize mb-1 text-sm">
+                  {field.replace("_", " ")} <span className="text-red-500">*</span>
+                </label>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    name={field}
+                    value={data.inspection[field]}
+                    onChange={(e) => {
+                      const { value } = e.target;
+
+                      // 🔹 Jika field numeric → tolak karakter non-angka (kecuali titik)
+                      if (isNumeric && value !== "" && !/^\d*\.?\d*$/.test(value)) {
+                        return; // jangan ubah state kalau input tidak valid
+                      }
+
+                      handleInspectionChange(e);
+                    }}
+                    placeholder={isNumeric ? "Enter number" : ""}
+                    className="border p-2 w-full rounded pr-10"
+                    required
+                  />
+                  {suffix && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                      {suffix}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
+      <div className="mt-3">
+        <label className="block text-sm mb-1">Keterangan <span className="text-red-500">*</span></label>
+        <textarea
+          name="description"
+          value={data.description}
+          onChange={handleChange}
+          className="border p-2 w-full rounded mb-3"
+          required
+        ></textarea>
+      </div>
 
-      {/* Created / Approved */}
-      <div className="mt-6 grid grid-cols-2 gap-4">
+      {/* Tambahkan field Upload Part Image dan Field Keterangannya, bisa dii tambah user sampai dengan 8x */}
+      {/* 🔹 Upload Part Images (Max 8) */}
+      <div className="mt-6">
+        <h3 className="font-semibold mb-2">Upload Part Images (Max 8)</h3>
+
+        {data.part_images?.map((img, index) => (
+          <div key={index} className="mb-6 border border-gray-200 p-4 rounded-md bg-gray-50">
+            <div className="flex items-start gap-6">
+              {/* 🖼️ Preview Image */}
+              <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
+                {img.file || img.url ? (
+                  <img
+                    src={img.url ? img.url : URL.createObjectURL(img.file)}
+                    alt={`Preview ${index + 1}`}
+                    className="w-full h-full object-cover rounded-md"
+                  />
+                ) : (
+                  <span className="text-gray-400 text-sm text-center px-2">No Image</span>
+                )}
+              </div>
+
+              {/* 📂 Upload & Description */}
+              <div className="flex-1">
+                <div className="border-2 border-dashed border-gray-300 rounded-md p-4 flex flex items-start justify-between bg-gray-50 hover:bg-gray-100 transition">
+                  <div className="flex flex-col items-start">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id={`photoUpload-${index}`}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      setData((prev) => {
+                        const updated = [...(prev.part_images || [])];
+                        updated[index] = { ...updated[index], file };
+                        return { ...prev, part_images: updated };
+                      });
+                    }}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor={`photoUpload-${index}`}
+                    className="cursor-pointer bg-blue-600 text-white px-4 py-2 text-xs rounded hover:bg-blue-700 transition"
+                  >
+                    Upload Photo {index + 1}
+                  </label>
+                  <p className="text-xs text-gray-500 mt-2">Format: JPG, PNG, JPEG (max 2MB)</p>
+                  </div>
+                  {/* 🗑 Tombol Hapus */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setData((prev) => {
+                        const updated = [...(prev.part_images || [])];
+                        updated.splice(index, 1);
+                        return { ...prev, part_images: updated };
+                      });
+                    }}
+                    className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition text-sm flex items-center gap-1"
+                  >
+                    <FiTrash2 />
+                  </button>
+                </div>
+                {/* 📝 Description */}
+                <div className="mt-2">
+                  <textarea
+                    value={img.description || ""}
+                    onChange={(e) => {
+                      const desc = e.target.value;
+                      setData((prev) => {
+                        const updated = [...(prev.part_images || [])];
+                        updated[index] = { ...updated[index], description: desc };
+                        return { ...prev, part_images: updated };
+                      });
+                    }}
+                    placeholder="Masukkan keterangan untuk gambar ini"
+                    className="border p-2 w-full rounded text-sm"
+                    rows={2}
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        {/* ➕ Add New Image */}
+        {(!data.part_images || data.part_images.length < 8) && (
+          <button
+            type="button"
+            onClick={() =>
+              setData((prev) => ({
+                ...prev,
+                part_images: [...(prev.part_images || []), { file: null, description: "" }],
+              }))
+            }
+            className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+          >
+            + Add Image
+          </button>
+        )}
+      </div>
+
+      {/* Created / Approved Hidden Area*/}
+      <div className="mt-6 grid grid-cols-2 gap-4 hidden">
         <div>
           <label className="block text-sm mb-1">Created By</label>
           <input
@@ -408,7 +788,8 @@ export default function StepSpis({ onNext, initialData }) {
             name="created_by"
             value={data.created_by}
             onChange={handleChange}
-            className="border p-2 w-full rounded"
+            readOnly
+            className="border p-2 w-full rounded bg-gray-100 text-gray-600 cursor-not-allowed"
           />
         </div>
         <div>
@@ -423,7 +804,7 @@ export default function StepSpis({ onNext, initialData }) {
         </div>
       </div>
 
-      <div className="mt-6 flex justify-between">
+      <div className="mt-6 flex justify-between border-t pt-6">
         <div className="flex gap-2">
         <button
           onClick={handleSaveDraft}
@@ -431,13 +812,6 @@ export default function StepSpis({ onNext, initialData }) {
           className="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400"
         >
           Save Draft
-        </button>
-        <button
-          onClick={() => navigate("/spis-preview", { state: { data } })}
-          type="button"
-          className="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600"
-        >
-          Preview
         </button>
         </div>
         <button
