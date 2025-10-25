@@ -4,6 +4,8 @@ import db from "../config/db.js";
 import path from "path";
 
 const router = express.Router();
+router.use(express.json());
+router.use(express.urlencoded({ extended: true }));
 
 // === Setup Multer untuk upload foto ===
 const storage = multer.diskStorage({
@@ -83,10 +85,16 @@ router.get("/last-docno", async (req, res) => {
     }
 });
 
-// === POST /api/spis ===
-router.post("/", upload.single("photo"), async (req, res) => {
+router.post(
+  "/",
+  upload.fields([
+    { name: "photo1", maxCount: 1 },
+    { name: "photo2", maxCount: 1 },
+    { name: "part_images", maxCount: 8 },
+  ]),
+  async (req, res) => {
     try {
-        const {
+      const {
         user_id,
         doc_no,
         date,
@@ -98,70 +106,69 @@ router.post("/", upload.single("photo"), async (req, res) => {
         part_number,
         supplier,
         part_description,
+        description,
         detail_part,
         part_material,
         inspection,
         created_by,
         approved_by,
         status,
-    } = req.body;
+      } = req.body;
 
-    if (!user_id) {
+      if (!user_id) {
         return res.status(400).json({ error: "Missing user_id" });
-    }
-    const photoPath = req.file ? `/uploads/spis/${req.file.filename}` : null;
-    const partMaterialJSON =
-    typeof part_material === "string" ? part_material : JSON.stringify(part_material);
-    const inspectionJSON =
-    typeof inspection === "string" ? inspection : JSON.stringify(inspection);
+      }
 
-    const [existing] = await db.query(
+      // === Handle photo1 & photo2
+      const photo1Path = req.files?.photo1
+        ? `/uploads/spis/${req.files.photo1[0].filename}`
+        : req.body.photo1_url || null;
+
+      const photo2Path = req.files?.photo2
+        ? `/uploads/spis/${req.files.photo2[0].filename}`
+        : req.body.photo2_url || null;
+
+      // === Parse JSON fields
+      const partMaterialJSON =
+        typeof part_material === "string" ? JSON.parse(part_material) : part_material;
+      const inspectionJSON =
+        typeof inspection === "string" ? JSON.parse(inspection) : inspection;
+
+      // === Handle multiple part images (max 8)
+      const descriptions =
+        req.body.part_image_descriptions &&
+        typeof req.body.part_image_descriptions === "string"
+          ? JSON.parse(req.body.part_image_descriptions)
+          : [];
+
+      let uploadedPartImages = [];
+
+      if (req.files?.part_images && req.files.part_images.length > 0) {
+        uploadedPartImages = req.files.part_images.map((file, i) => ({
+          url: `/uploads/spis/${file.filename}`,
+          description: descriptions[i]?.description || "",
+        }));
+      }
+
+      // === Check existing submitted SPIS
+      const [existing] = await db.query(
         "SELECT id FROM spis WHERE user_id = ? AND status = 'submitted' LIMIT 1",
         [user_id]
-    );
+      );
 
-    if (existing.length > 0) {
-        const safeDate = date && date.trim() !== "" ? date : null;
+      const safeDate = date && date.trim() !== "" ? date : null;
+
+      if (existing.length > 0) {
         await db.query(
-            `UPDATE spis SET 
-                doc_no=?, date=?, location=?, code=?, name=?, department=?, telephone=?,
-                part_number=?, supplier=?, part_description=?, detail_part=?, photo=?,
-                part_material=?, inspection=?, created_by=?, approved_by=?, status=?,
-                updated_at=NOW()
-            WHERE id=?`,
-            [
-                doc_no,
-                safeDate,
-                location,
-                code,
-                name,
-                department,
-                telephone,
-                part_number,
-                supplier,
-                part_description,
-                detail_part,
-                photoPath,
-                partMaterialJSON,
-                inspectionJSON,
-                created_by,
-                approved_by,
-                status || "submitted",
-                existing[0].id,
-            ]
-        );
-        return res.json({ message: "SPIS updated successfully", id: existing[0].id, });
-    } else {
-        const [result] = await db.query(
-            `INSERT INTO spis (
-            user_id, doc_no, date, location, code, name, department, telephone,
-            part_number, supplier, part_description, detail_part, photo,
-            part_material, inspection, created_by, approved_by, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-            user_id,
+          `UPDATE spis SET 
+            doc_no=?, date=?, location=?, code=?, name=?, department=?, telephone=?,
+            part_number=?, supplier=?, part_description=?, detail_part=?, description=?,
+            photo1=?, photo2=?, part_material=?, inspection=?, part_images=?,
+            created_by=?, approved_by=?, status=?, updated_at=NOW()
+          WHERE id=?`,
+          [
             doc_no,
-            date,
+            safeDate,
             location,
             code,
             name,
@@ -171,25 +178,67 @@ router.post("/", upload.single("photo"), async (req, res) => {
             supplier,
             part_description,
             detail_part,
-            photoPath,
-            partMaterialJSON,
-            inspectionJSON,
+            description,
+            photo1Path,
+            photo2Path,
+            JSON.stringify(partMaterialJSON),
+            JSON.stringify(inspectionJSON),
+            JSON.stringify(uploadedPartImages),
             created_by,
             approved_by,
             status || "submitted",
-            ]
+            existing[0].id,
+          ]
         );
-
-        return res.status(201).json({
-            id: result.insertId,
-            message: "SPIS created successfully",
+        return res.json({
+          message: "SPIS updated successfully",
+          id: existing[0].id,
         });
-    }
+      }
+
+      // === Insert new SPIS
+      const [result] = await db.query(
+        `INSERT INTO spis (
+          user_id, doc_no, date, location, code, name, department, telephone,
+          part_number, supplier, part_description, detail_part,
+          photo1, photo2, part_material, inspection, part_images,
+          created_by, approved_by, status, description
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          user_id,
+          doc_no,
+          safeDate,
+          location,
+          code,
+          name,
+          department,
+          telephone,
+          part_number,
+          supplier,
+          part_description,
+          detail_part,
+          photo1Path,
+          photo2Path,
+          JSON.stringify(partMaterialJSON),
+          JSON.stringify(inspectionJSON),
+          JSON.stringify(uploadedPartImages),
+          created_by,
+          approved_by,
+          status || "submitted",
+          description,
+        ]
+      );
+
+      res.status(201).json({
+        id: result.insertId,
+        message: "SPIS created successfully",
+      });
     } catch (err) {
-        console.error("Error saving SPIS:", err);
-        res.status(500).json({ error: "Failed to save SPIS" });
+      console.error("Error saving SPIS:", err);
+      res.status(500).json({ error: "Failed to save SPIS" });
     }
-});
+  }
+);
 
 // === GET /api/spis ===
 router.get("/", async (req, res) => {

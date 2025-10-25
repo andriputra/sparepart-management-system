@@ -31,18 +31,17 @@ export default function StepSpis({ onNext, initialData }) {
     part_number: "",
     supplier: "",
     part_description: "",
-    remarks: "",
+    description: "",
     photo: null,
     part_material: [],
     inspection: {
-      visual: "",
+      visual_condition: "",
       part_system: "",
       length: "",
       width: "",
       height: "",
       weight: "",
       package_dimension: "",
-      remarks: "",
     },
     created_by: "",
     approved_by: "",
@@ -63,8 +62,6 @@ export default function StepSpis({ onNext, initialData }) {
       try {
         const userId = localStorage.getItem("user_id");
         if (!userId) return;
-
-        // Ambil info user dari backend
         const res = await api.get(`/auth/user/${userId}`);
         const user = res.data;
 
@@ -175,94 +172,126 @@ export default function StepSpis({ onNext, initialData }) {
   };
 
   const handleNext = async () => {
-  try {
-    const requiredFields = [
-      { key: "doc_no", label: "SPPS Doc No" },
-      { key: "date", label: "Date" },
-      { key: "name", label: "Name" },
-      { key: "location", label: "Location" },
-      { key: "department", label: "Departemen" },
-      { key: "code", label: "Kode" },
-      { key: "telephone", label: "Telepon" },
-      { key: "part_number", label: "Part Number" },
-      { key: "part_description", label: "Part Deskripsi" },
-      { key: "supplier", label: "Supplier" },
-      { key: "detail_part", label: "Detail Part" },
-      { key: "description", label: "Keterangan" },
-    ];
-
-    for (const field of requiredFields) {
-      if (!data[field.key] || data[field.key].toString().trim() === "") {
-        toast.error(`${field.label} wajib diisi.`);
+    try {
+      const requiredFields = [
+        { key: "doc_no", label: "SPIS Doc No" },
+        { key: "date", label: "Date" },
+        { key: "name", label: "Name" },
+        { key: "location", label: "Location" },
+        { key: "department", label: "Departemen" },
+        { key: "code", label: "Kode" },
+        { key: "telephone", label: "Telepon" },
+        { key: "part_number", label: "Part Number" },
+        { key: "part_description", label: "Part Deskripsi" },
+        { key: "supplier", label: "Supplier" },
+        { key: "detail_part", label: "Detail Part" },
+        { key: "description", label: "Keterangan" },
+      ];
+  
+      for (const field of requiredFields) {
+        if (!data[field.key] || data[field.key].toString().trim() === "") {
+          toast.error(`${field.label} wajib diisi.`);
+          return;
+        }
+      }
+  
+      if (!data.part_material?.length) {
+        toast.error("Part Material wajib dipilih.");
         return;
       }
-    }
-
-    // 🔹 Validasi part material
-    if (!data.part_material || data.part_material.length === 0) {
-      toast.error("Part Material wajib dipilih.");
-      return;
-    }
-
-    // 🔹 Validasi inspection
-    const requiredInspection = [
-      "visual_condition",
-      "part_system",
-      "length",
-      "width",
-      "height",
-      "weight",
-      "package_dimension",
-    ];
-    for (const field of requiredInspection) {
-      if (!data.inspection[field] || data.inspection[field].toString().trim() === "") {
-        toast.error(`${field.replace("_", " ")} wajib diisi.`);
+  
+      const requiredInspection = [
+        "visual_condition",
+        "part_system",
+        "length",
+        "width",
+        "height",
+        "weight",
+        "package_dimension",
+      ];
+  
+      for (const field of requiredInspection) {
+        if (!data.inspection[field] || data.inspection[field].toString().trim() === "") {
+          toast.error(`${field.replace("_", " ")} wajib diisi.`);
+          return;
+        }
+      }
+  
+      const userId = localStorage.getItem("user_id");
+      if (!userId) {
+        toast.error("Please login first.");
         return;
       }
-    }
-
-    const userId = localStorage.getItem("user_id");
-    if (!userId) {
-      toast.error("Please login first.");
-      return;
-    }
-
-    // 🔸 Gabungkan “Other” dengan teksnya
-    let finalMaterials = data.part_material || [];
-    if (finalMaterials.includes("Other") && data.other_material) {
-      finalMaterials = finalMaterials.map((m) =>
-        m === "Other" ? `Other: ${data.other_material}` : m
-      );
-    }
-
-    const formData = new FormData();
-    Object.keys(data).forEach((key) => {
-      if (key === "photo" && data.photo instanceof File) {
-        formData.append("photo", data.photo);
-      } else if (key === "inspection" || key === "part_material") {
-        const value =
-          key === "part_material" ? finalMaterials : data[key];
-        formData.append(key, JSON.stringify(value));
-      } else {
-        formData.append(key, data[key]);
+  
+      let finalMaterials = data.part_material || [];
+      if (finalMaterials.includes("Other") && data.other_material) {
+        finalMaterials = finalMaterials.map((m) =>
+          m === "Other" ? `Other: ${data.other_material}` : m
+        );
       }
-    });
-
-    formData.append("user_id", userId);
-    formData.append("status", "submitted");
-
-    const response = await api.post("/spis", formData);
-
-    const spisId = response.data.id || localStorage.getItem("spis_id") || null;
-    if (spisId) localStorage.setItem("spis_id", spisId);
-
-    toast.success(response.data.message || "SPIS berhasil disimpan!");
-    onNext({ ...data, spis_id: spisId });
-  } catch (err) {
-    console.error("Error saving SPIS:", err);
-    toast.error("Gagal menyimpan SPIS");
-  }
-};
+  
+      const formData = new FormData();
+  
+      // 🔹 Append basic fields
+      formData.append("user_id", userId);
+      formData.append("status", "submitted");
+      formData.append("doc_no", data.doc_no);
+      formData.append("date", data.date);
+      formData.append("location", data.location);
+      formData.append("code", data.code);
+      formData.append("name", data.name);
+      formData.append("department", data.department);
+      formData.append("telephone", data.telephone);
+      formData.append("part_number", data.part_number);
+      formData.append("supplier", data.supplier);
+      formData.append("part_description", data.part_description);
+      formData.append("description", data.description);
+      formData.append("detail_part", data.detail_part);
+      formData.append("created_by", data.created_by);
+      formData.append("approved_by", data.approved_by || "");
+  
+      // 🔹 Append JSON fields
+      formData.append("part_material", JSON.stringify(finalMaterials));
+      formData.append("inspection", JSON.stringify(data.inspection || {}));
+  
+      // 🔹 Upload Part Images (max 8)
+      if (data.part_images && data.part_images.length > 0) {
+        data.part_images.forEach((img) => {
+          if (img.file instanceof File) formData.append("part_images", img.file);
+        });
+  
+        const imageDescriptions = data.part_images.map((img) => ({
+          description: img.description || "",
+        }));
+  
+        formData.append("part_image_descriptions", JSON.stringify(imageDescriptions));
+      }
+  
+      // 🔹 Append main photos
+      if (data.photo1 instanceof File) formData.append("photo1", data.photo1);
+      else if (data.photo1_url) formData.append("photo1_url", data.photo1_url);
+  
+      if (data.photo2 instanceof File) formData.append("photo2", data.photo2);
+      else if (data.photo2_url) formData.append("photo2_url", data.photo2_url);
+  
+      // 🔹 Submit to backend
+      const response = await api.post("/spis", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+  
+      const spisId = response.data.id || localStorage.getItem("spis_id") || null;
+      if (spisId) localStorage.setItem("spis_id", spisId);
+  
+      toast.success(response.data.message || "SPIS berhasil disimpan!");
+      onNext({ ...data, spis_id: spisId });
+    } catch (err) {
+      console.error("Error saving SPIS:", err);
+      toast.error("Gagal menyimpan SPIS");
+    }
+  };
 
   const handleSaveDraft = async () => {
     try {
@@ -458,24 +487,21 @@ export default function StepSpis({ onNext, initialData }) {
           <h3 className="font-semibold mb-2">Upload Part Image</h3>
           
           <p className="text-sm mb-2">Part Image 1 <span className="text-red-500">*</span></p>
-          <div className="flex items-stracth gap-6">
+          <div className="flex items-stretch gap-6">
             {/* 🖼️ Preview Image */}
-            
             <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
-              {data.photo_url || data.photo ? (
+              {data.photo1_url || data.photo1 ? (
                 <img
                   src={
-                    data.photo_url
-                      ? data.photo_url
-                      : URL.createObjectURL(data.photo)
+                    data.photo1_url
+                      ? data.photo1_url
+                      : URL.createObjectURL(data.photo1)
                   }
                   alt="Preview"
                   className="w-full h-full object-cover rounded-md"
                 />
               ) : (
-                <span className="text-gray-400 text-sm text-center px-2">
-                  No Image
-                </span>
+                <span className="text-gray-400 text-sm text-center px-2">No Image</span>
               )}
             </div>
 
@@ -484,13 +510,13 @@ export default function StepSpis({ onNext, initialData }) {
               <div className="h-full border-2 border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition">
                 <input
                   type="file"
-                  name="photo"
-                  id="photoUpload"
+                  name="photo1"
+                  id="photoUpload1"
                   onChange={handleChange}
                   className="hidden"
                 />
                 <label
-                  htmlFor="photoUpload"
+                  htmlFor="photoUpload1"
                   className="cursor-pointer bg-blue-600 text-white px-4 py-2 text-xs rounded hover:bg-blue-700 transition"
                 >
                   Upload Photo
@@ -501,10 +527,12 @@ export default function StepSpis({ onNext, initialData }) {
                 </p>
 
                 {/* Tombol Delete */}
-                {(data.photo || data.photo_url) && (
+                {(data.photo1 || data.photo1_url) && (
                   <button
                     type="button"
-                    onClick={() => setData({ ...data, photo: null, photo_url: null })}
+                    onClick={() =>
+                      setData({ ...data, photo1: null, photo1_url: null })
+                    }
                     className="mt-3 text-red-500 hover:text-red-700 text-sm font-medium"
                   >
                     Delete Photo
@@ -513,25 +541,23 @@ export default function StepSpis({ onNext, initialData }) {
               </div>
             </div>
           </div>
+
           <p className="text-sm mt-3 mb-2">Part Image 2 <span className="text-red-500">*</span></p>
-          <div className="flex items-stracth gap-6">
+          <div className="flex items-stretch gap-6">
             {/* 🖼️ Preview Image */}
-            
             <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
-              {data.photo_url || data.photo ? (
+              {data.photo2_url || data.photo2 ? (
                 <img
                   src={
-                    data.photo_url
-                      ? data.photo_url
-                      : URL.createObjectURL(data.photo)
+                    data.photo2_url
+                      ? data.photo2_url
+                      : URL.createObjectURL(data.photo2)
                   }
                   alt="Preview"
                   className="w-full h-full object-cover rounded-md"
                 />
               ) : (
-                <span className="text-gray-400 text-sm text-center px-2">
-                  No Image
-                </span>
+                <span className="text-gray-400 text-sm text-center px-2">No Image</span>
               )}
             </div>
 
@@ -540,13 +566,13 @@ export default function StepSpis({ onNext, initialData }) {
               <div className="h-full border-2 border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition">
                 <input
                   type="file"
-                  name="photo"
-                  id="photoUpload"
+                  name="photo2"
+                  id="photoUpload2"
                   onChange={handleChange}
                   className="hidden"
                 />
                 <label
-                  htmlFor="photoUpload"
+                  htmlFor="photoUpload2"
                   className="cursor-pointer bg-blue-600 text-white px-4 py-2 text-xs rounded hover:bg-blue-700 transition"
                 >
                   Upload Photo
@@ -557,10 +583,12 @@ export default function StepSpis({ onNext, initialData }) {
                 </p>
 
                 {/* Tombol Delete */}
-                {(data.photo || data.photo_url) && (
+                {(data.photo2 || data.photo2_url) && (
                   <button
                     type="button"
-                    onClick={() => setData({ ...data, photo: null, photo_url: null })}
+                    onClick={() =>
+                      setData({ ...data, photo2: null, photo2_url: null })
+                    }
                     className="mt-3 text-red-500 hover:text-red-700 text-sm font-medium"
                   >
                     Delete Photo
@@ -575,7 +603,7 @@ export default function StepSpis({ onNext, initialData }) {
       {/* Material */}
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Part Material</h3>
-          {["Rubber", "Metal", "Platic", "Glass", "Other"].map((m) => (
+          {["Rubber", "Metal", "Plastic", "Glass", "Other"].map((m) => (
           <label key={m} className="mr-4 inline-flex items-center">
             <input
               type="checkbox"
@@ -620,7 +648,6 @@ export default function StepSpis({ onNext, initialData }) {
             "weight",
             "package_dimension",
           ].map((field) => {
-            // Tentukan satuan berdasarkan field
             let suffix = "";
             if (["length", "width", "height"].includes(field)) {
               suffix = "mm";
@@ -628,9 +655,7 @@ export default function StepSpis({ onNext, initialData }) {
               suffix = "kg";
             }
 
-            // Apakah field ini hanya boleh angka?
             const isNumeric = ["length", "width", "height", "weight", "package_dimension"].includes(field);
-
             return (
               <div key={field}>
                 <label className="block capitalize mb-1 text-sm">
@@ -645,9 +670,8 @@ export default function StepSpis({ onNext, initialData }) {
                     onChange={(e) => {
                       const { value } = e.target;
 
-                      // 🔹 Jika field numeric → tolak karakter non-angka (kecuali titik)
                       if (isNumeric && value !== "" && !/^\d*\.?\d*$/.test(value)) {
-                        return; // jangan ubah state kalau input tidak valid
+                        return; 
                       }
 
                       handleInspectionChange(e);
