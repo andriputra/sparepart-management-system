@@ -1,8 +1,37 @@
 import { useRef, useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { setSpisData } from "../store/spisSlice";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { FiTrash2 } from "react-icons/fi";
+
+const defaultData = {
+  doc_no: "",
+  date: "",
+  location: "",
+  code: "",
+  name: "",
+  department: "",
+  telephone: "",
+  part_number: "",
+  supplier: "",
+  part_description: "",
+  description: "",
+  photo: null,
+  part_material: [],
+  inspection: {
+    visual_condition: "",
+    part_system: "",
+    length: "",
+    width: "",
+    height: "",
+    weight: "",
+    package_dimension: "",
+  },
+  created_by: "",
+  approved_by: "",
+};
 
 const generateDocNo = async () => {
   try {
@@ -19,40 +48,28 @@ const generateDocNo = async () => {
 };
 
 export default function StepSpis({ onNext, initialData }) {
-  const navigate = useNavigate();
-  const defaultData = {
-    doc_no: "",
-    date: "",
-    location: "",
-    code: "",
-    name: "",
-    department: "",
-    telephone: "",
-    part_number: "",
-    supplier: "",
-    part_description: "",
-    description: "",
-    photo: null,
-    part_material: [],
-    inspection: {
-      visual_condition: "",
-      part_system: "",
-      length: "",
-      width: "",
-      height: "",
-      weight: "",
-      package_dimension: "",
-    },
-    created_by: "",
-    approved_by: "",
-  };
+  const dispatch = useDispatch();
+  const { spis } = useSelector((state) => state.spis);
 
-  const [data, setData] = useState({
-    ...defaultData,
-    ...initialData,
-    part_material: initialData?.part_material || [],
-    inspection: { ...defaultData.inspection, ...(initialData?.inspection || {}) },
-  });
+  // 🔹 Sinkronisasi state lokal dan Redux
+  const [data, setData] = useState(spis || defaultData);
+
+  // 🔸 Gunakan useEffect agar data form selalu ikut Redux (terutama setelah back)
+  useEffect(() => {
+    if (spis && Object.keys(spis).length > 0) {
+      setData((prev) => ({
+        ...prev,
+        ...defaultData,
+        ...spis,
+        inspection: { ...defaultData.inspection, ...(spis.inspection || {}) },
+      }));
+    }
+  }, [spis]);
+
+  // ✅ Setiap kali data berubah, langsung simpan ke Redux (dua arah)
+  useEffect(() => {
+    dispatch(setSpisData(data));
+  }, [data, dispatch]);
   
   const loadedRef = useRef(false);
 
@@ -64,9 +81,6 @@ export default function StepSpis({ onNext, initialData }) {
         if (!userId) return;
         const res = await api.get(`/auth/user/${userId}`);
         const user = res.data;
-
-        console.log("Fetched user info:", user);
-
         setData((prev) => ({
           ...prev,
           name: user.fullname || prev.name,
@@ -82,6 +96,7 @@ export default function StepSpis({ onNext, initialData }) {
     fetchUserInfo();
   }, []);
 
+  // ✅ Generate doc_no otomatis
   useEffect(() => {
     const fetchInitialData = async () => {
       const existingDocNo = localStorage.getItem("spis_doc_no");
@@ -89,7 +104,6 @@ export default function StepSpis({ onNext, initialData }) {
         setData((prev) => ({ ...prev, doc_no: existingDocNo }));
         return;
       }
-      
       const newDocNo = await generateDocNo();
       setData((prev) => ({ ...prev, doc_no: newDocNo }));
       localStorage.setItem("spis_doc_no", newDocNo);
@@ -118,61 +132,117 @@ export default function StepSpis({ onNext, initialData }) {
     fetchUserName();
   }, []);
   
+  // ✅ Load draft terakhir user
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
     if (userId && !loadedRef.current) {
       loadedRef.current = true; 
       api.get(`/spis/draft/${userId}`).then((res) => {
         if (res.data) {
+          const draft = res.data;
+      
+          // 🧠 Pastikan part_images dikonversi ke format array [{ file, url, description }]
+          let parsedImages = [];
+          try {
+            if (typeof draft.part_images === "string") {
+              parsedImages = JSON.parse(draft.part_images);
+            } else if (Array.isArray(draft.part_images)) {
+              parsedImages = draft.part_images;
+            }
+          } catch (err) {
+            console.error("Failed to parse part_images:", err);
+          }
+      
+          const formattedImages = parsedImages.map((img) => ({
+            file: null,
+            url: img.url || img.photo_url || img.file_url || "",
+            description: img.description || "",
+          }));
+      
           setData((prev) => ({
             ...prev,
-            ...res.data,
-            part_material: res.data.part_material || [],
-            inspection: { ...prev.inspection, ...(res.data.inspection || {}) },
+            ...draft,
+            part_material: draft.part_material || [],
+            inspection: { ...prev.inspection, ...(draft.inspection || {}) },
+            part_images: formattedImages,
           }));
+      
           toast.info("Loaded your saved draft.");
         }
       });
     }
   }, []);
 
+  // 🔹 Load data dari localStorage agar tidak hilang saat klik Back
+  useEffect(() => {
+    const savedForm = localStorage.getItem("spis_form_data");
+    if (savedForm) {
+      const parsed = JSON.parse(savedForm);
+      setData((prev) => ({
+        ...prev,
+        ...parsed,
+        inspection: { ...prev.inspection, ...(parsed.inspection || {}) },
+      }));
+      dispatch(setSpisData(parsed));
+      console.log("✅ Loaded local SPIS form data (from localStorage)");
+    }
+  }, []);
+
+  // 🔹 Handle perubahan input biasa & file
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    if (files) {
-      setData({ ...data, [name]: files[0] });
+
+    if (files && files[0]) {
+      const file = files[0];
+      const previewUrl = URL.createObjectURL(file);
+      setData((prev) => ({
+        ...prev,
+        [name]: file,
+        [`${name}_url`]: previewUrl,
+      }));
     } else {
-      setData({ ...data, [name]: value });
+      setData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
+  // ✅ Handle material (multi-checkbox)
   const handleMaterialChange = (e) => {
     const { value, checked } = e.target;
     setData((prev) => {
-      let updated = prev.part_material || [];
-  
-      if (checked) {
-        updated = [...updated, value];
-      } else {
-        updated = updated.filter((m) => m !== value);
-        if (value === "Other") {
-          return { ...prev, part_material: updated, other_material: "" };
-        }
-      }
-  
-      return { ...prev, part_material: updated };
+      const materials = checked
+        ? [...(prev.part_material || []), value]
+        : prev.part_material.filter((m) => m !== value);
+      return { ...prev, part_material: materials };
     });
   };
 
   const handleInspectionChange = (e) => {
     const { name, value } = e.target;
-    setData({
-      ...data,
-      inspection: { ...data.inspection, [name]: value },
-    });
+    setData((prev) => ({
+      ...prev,
+      inspection: { ...prev.inspection, [name]: value },
+    }));
+  };
+
+  const serializeImages = (images) => {
+    if (!images || !Array.isArray(images)) return [];
+    return images.map((img) => ({
+      url:
+        img.url ||
+        (img.file ? URL.createObjectURL(img.file) : null),
+      description: img.description || "",
+    }));
   };
 
   const handleNext = async () => {
     try {
+      dispatch(setSpisData(data));
+      const safeData = {
+        ...data,
+        part_images: serializeImages(data.part_images),
+      };
+      localStorage.setItem("spis_form_data", JSON.stringify(safeData));
+      dispatch(setSpisData(safeData));
       const requiredFields = [
         { key: "doc_no", label: "SPIS Doc No" },
         { key: "date", label: "Date" },
@@ -256,14 +326,24 @@ export default function StepSpis({ onNext, initialData }) {
   
       // 🔹 Upload Part Images (max 8)
       if (data.part_images && data.part_images.length > 0) {
-        data.part_images.forEach((img) => {
-          if (img.file instanceof File) formData.append("part_images", img.file);
-        });
-  
-        const imageDescriptions = data.part_images.map((img) => ({
-          description: img.description || "",
-        }));
-  
+        const imageDescriptions = [];
+        const imageUrls = [];
+
+        for (const img of data.part_images) {
+          if (img.file instanceof File) {
+            // kirim file baru
+            formData.append("part_images", img.file);
+            imageDescriptions.push(img.description || "");
+            imageUrls.push("");
+          } else if (img.url) {
+            // kirim URL lama (misal hasil draft)
+            imageUrls.push(img.url);
+            imageDescriptions.push(img.description || "");
+          }
+        }
+
+        // 🔸 kirim semua data ke backend
+        formData.append("part_image_urls", JSON.stringify(imageUrls));
         formData.append("part_image_descriptions", JSON.stringify(imageDescriptions));
       }
   
@@ -291,13 +371,24 @@ export default function StepSpis({ onNext, initialData }) {
       console.error("Error saving SPIS:", err);
       toast.error("Gagal menyimpan SPIS");
     }
+    dispatch(setSpisData(data));
+    onNext(data);
   };
+
+  useEffect(() => {
+    if (spis && Object.keys(spis).length > 0) {
+      setData((prev) => ({
+        ...prev,
+        ...spis,
+        inspection: { ...prev.inspection, ...(spis.inspection || {}) },
+      }));
+    }
+  }, []); 
 
   const handleSaveDraft = async () => {
     try {
       const userId = localStorage.getItem("user_id");
       const token = localStorage.getItem("token");
-  
       if (!userId || !token) {
         toast.error("Please login first.");
         return;
@@ -333,7 +424,13 @@ export default function StepSpis({ onNext, initialData }) {
         );
       }
 
-      const draftData = { ...data, photo_url: photoUrl, part_material: finalMaterials };
+      // const draftData = { ...data, photo_url: photoUrl, part_material: finalMaterials };
+      const draftData = {
+        ...data,
+        photo_url: photoUrl,
+        part_material: finalMaterials,
+        part_images: serializeImages(data.part_images),
+      };
       delete draftData.photo; 
       await api.post(
         "/spis/save-draft",
@@ -490,13 +587,15 @@ export default function StepSpis({ onNext, initialData }) {
           <div className="flex items-stretch gap-6">
             {/* 🖼️ Preview Image */}
             <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
-              {data.photo1_url || data.photo1 ? (
+              {data.photo1_url ? (
                 <img
-                  src={
-                    data.photo1_url
-                      ? data.photo1_url
-                      : URL.createObjectURL(data.photo1)
-                  }
+                  src={data.photo1_url}
+                  alt="Preview"
+                  className="w-full h-full object-cover rounded-md"
+                />
+              ) : data.photo1 instanceof File ? (
+                <img
+                  src={URL.createObjectURL(data.photo1)}
                   alt="Preview"
                   className="w-full h-full object-cover rounded-md"
                 />
@@ -546,13 +645,15 @@ export default function StepSpis({ onNext, initialData }) {
           <div className="flex items-stretch gap-6">
             {/* 🖼️ Preview Image */}
             <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
-              {data.photo2_url || data.photo2 ? (
+              {data.photo2_url ? (
                 <img
-                  src={
-                    data.photo2_url
-                      ? data.photo2_url
-                      : URL.createObjectURL(data.photo2)
-                  }
+                  src={data.photo2_url}
+                  alt="Preview"
+                  className="w-full h-full object-cover rounded-md"
+                />
+              ) : data.photo2 instanceof File ? (
+                <img
+                  src={URL.createObjectURL(data.photo2)}
                   alt="Preview"
                   className="w-full h-full object-cover rounded-md"
                 />
@@ -712,12 +813,11 @@ export default function StepSpis({ onNext, initialData }) {
             <div className="flex items-start gap-6">
               {/* 🖼️ Preview Image */}
               <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
-                {img.file || img.url ? (
-                  <img
-                    src={img.url ? img.url : URL.createObjectURL(img.file)}
-                    alt={`Preview ${index + 1}`}
-                    className="w-full h-full object-cover rounded-md"
-                  />
+
+                {img.url ? (
+                  <img src={img.url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-md" />
+                ) : img.file instanceof File ? (
+                  <img src={URL.createObjectURL(img.file)} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-md" />
                 ) : (
                   <span className="text-gray-400 text-sm text-center px-2">No Image</span>
                 )}

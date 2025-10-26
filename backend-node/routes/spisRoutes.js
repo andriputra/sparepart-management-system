@@ -134,20 +134,27 @@ router.post(
       const inspectionJSON =
         typeof inspection === "string" ? JSON.parse(inspection) : inspection;
 
-      // === Handle multiple part images (max 8)
-      const descriptions =
-        req.body.part_image_descriptions &&
-        typeof req.body.part_image_descriptions === "string"
-          ? JSON.parse(req.body.part_image_descriptions)
-          : [];
+      // === Handle multiple part images (combine file + url + description)
+      const imageUrls =
+      req.body.part_image_urls && typeof req.body.part_image_urls === "string"
+        ? JSON.parse(req.body.part_image_urls)
+        : [];
+      const imageDescs =
+      req.body.part_image_descriptions &&
+      typeof req.body.part_image_descriptions === "string"
+        ? JSON.parse(req.body.part_image_descriptions)
+        : [];
+      const uploadedFiles = req.files?.part_images || [];
 
-      let uploadedPartImages = [];
+      const combinedImages = [];
 
-      if (req.files?.part_images && req.files.part_images.length > 0) {
-        uploadedPartImages = req.files.part_images.map((file, i) => ({
-          url: `/uploads/spis/${file.filename}`,
-          description: descriptions[i]?.description || "",
-        }));
+      for (let i = 0; i < Math.max(uploadedFiles.length, imageUrls.length); i++) {
+      combinedImages.push({
+        url: uploadedFiles[i]
+          ? `/uploads/spis/${uploadedFiles[i].filename}`
+          : imageUrls[i] || null,
+        description: imageDescs[i] || "",
+      });
       }
 
       // === Check existing submitted SPIS
@@ -183,7 +190,7 @@ router.post(
             photo2Path,
             JSON.stringify(partMaterialJSON),
             JSON.stringify(inspectionJSON),
-            JSON.stringify(uploadedPartImages),
+            JSON.stringify(combinedImages),
             created_by,
             approved_by,
             status || "submitted",
@@ -221,7 +228,7 @@ router.post(
           photo2Path,
           JSON.stringify(partMaterialJSON),
           JSON.stringify(inspectionJSON),
-          JSON.stringify(uploadedPartImages),
+          JSON.stringify(combinedImages),
           created_by,
           approved_by,
           status || "submitted",

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FiMenu, FiLogOut, FiFileText, FiHome, FiSliders, FiCpu, FiUser } from "react-icons/fi";
 import api from "../api/axios";
-
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const [userInfo, setUserInfo] = useState({ name: "", fullname:"", role: "" });
@@ -89,10 +88,11 @@ export default function Sidebar() {
         <nav className="flex-1 mt-4">
             {menus
                 .filter(menu => {
-                if ((userInfo.role === "viewer" || userInfo.role === "approval") && menu.name === "Document Create") {
-                    return false;
-                }
-                return true;
+                    const role = userInfo.role?.toLowerCase();
+                    if ((role === "viewer" || role === "approval") && menu.name === "Document Create") {
+                      return false;
+                    }
+                    return true;
                 })
                 .map((menu) => (
                 <Link
