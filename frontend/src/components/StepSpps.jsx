@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import PartImageUpload from "./PartImageUpload";
 
 const generateDocNo = async () => {
   try {
@@ -17,7 +17,6 @@ const generateDocNo = async () => {
 };
 
 export default function StepSpps({ onNext, onPrev, initialData }) {
-  const navigate = useNavigate();
   const loadedRef = useRef(false);
 
   const defaultData = {
@@ -36,13 +35,31 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     package_code: "",
     package_detail: "",
     illustration_part: null,
-    illustration_package: null,
   };
 
   const [data, setData] = useState({
     ...defaultData,
-    ...initialData,
+    ...(initialData
+      ? {
+          // hanya ambil field yang relevan dari SPIS
+          date: initialData.date,
+          part_number: initialData.part_number,
+          supplier: initialData.supplier,
+          part_description: initialData.part_description,
+          detail_parts: initialData.detail_part,
+          part_weight: initialData.inspection?.weight,
+          part_dimension: initialData.inspection?.package_dimension,
+          created_by: initialData.name,
+          illustration_part: initialData.photo1_url || initialData.photo1,
+        }
+      : {}),
   });
+
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      setData((prev) => ({ ...prev, ...initialData }));
+    }
+  }, [initialData]);
 
   // === Generate doc no ===
   useEffect(() => {
@@ -89,35 +106,27 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     }
   }, []);
 
-  // === Auto-fill field dari SPIS ===
   useEffect(() => {
     if (!initialData || Object.keys(initialData).length === 0) return;
-
-    console.log("🟢 Received initialData from SPIS:", initialData);
-
+  
     setData((prev) => {
+      if (Object.keys(prev).some((key) => prev[key])) return prev;
+  
       const updated = {
         ...prev,
-        // isi otomatis dari StepSpis
-        date: initialData.date || prev.date,
-        part_number: initialData.part_number || prev.part_number,
-        supplier: initialData.supplier || prev.supplier,
-        part_description: initialData.part_description || prev.part_description,
-        part_weight: initialData.inspection
-          ? initialData.inspection.weight || prev.part_weight
-          : prev.part_weight,
-        part_dimension: initialData.inspection
-          ? initialData.inspection.package_dimension || prev.part_dimension
-          : prev.part_dimension,
-        detail_parts: initialData.detail_part || prev.detail_parts,
-        created_by: initialData.name || prev.created_by,
+        date: initialData.date || "",
+        part_number: initialData.part_number || "",
+        supplier: initialData.supplier || "",
+        part_description: initialData.part_description || "",
+        part_weight: initialData.inspection?.weight || "",
+        part_dimension: initialData.inspection?.package_dimension || "",
+        detail_parts: initialData.detail_part || "",
+        created_by: initialData.name || "",
         illustration_part:
           initialData.photo1_url ||
           initialData.photo1 ||
-          prev.illustration_part,
+          null,
       };
-
-      console.log("Auto-filled SPPS data:", updated);
       return updated;
     });
   }, [initialData]);
@@ -155,34 +164,119 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     }
   };
 
+  // const handleNext = async () => {
+  //   try {
+  //     const formData = new FormData();
+  //     const userId = localStorage.getItem("user_id");
+  //     const spisId = localStorage.getItem("spis_id");
+
+  //     if (!spisId) {
+  //       toast.error("SPIS ID tidak ditemukan. Silakan mulai dari Step 1 (SPIS).");
+  //       return;
+  //     }
+
+  //     Object.keys(data).forEach((key) => {
+  //       if (data[key] instanceof File) {
+  //         formData.append(key, data[key]);
+  //       } else {
+  //         formData.append(key, data[key]);
+  //       }
+  //     });
+
+  //     formData.append("spis_id", spisId);
+  //     formData.append("user_id", userId);
+
+  //     const response = await api.post("/spps", formData, {
+  //       headers: { "Content-Type": "multipart/form-data" },
+  //     });
+
+  //     toast.success("SPPS saved successfully!");
+  //     onNext(data);
+  //   } catch (err) {
+  //     console.error("Error saving SPPS:", err);
+  //     toast.error("Failed to save SPPS");
+  //   }
+  // };
   const handleNext = async () => {
     try {
       const formData = new FormData();
       const userId = localStorage.getItem("user_id");
       const spisId = localStorage.getItem("spis_id");
-
+      const existingSppsId = localStorage.getItem("spps_id");
+  
       if (!spisId) {
         toast.error("SPIS ID tidak ditemukan. Silakan mulai dari Step 1 (SPIS).");
         return;
       }
-
-      Object.keys(data).forEach((key) => {
-        if (data[key] instanceof File) {
-          formData.append(key, data[key]);
-        } else {
+  
+      // 🔹 Hanya field yang memang dikirim ke tabel SPPS
+      const allowedFields = [
+        "doc_no",
+        "date",
+        "part_number",
+        "supplier",
+        "part_description",
+        "qty",
+        "part_weight",
+        "part_dimension",
+        "package_material",
+        "package_code",
+        'detail_part',
+        "package_detail",
+        "created_by",
+        "approved_by",
+      ];
+  
+      allowedFields.forEach((key) => {
+        if (data[key] !== undefined && data[key] !== null) {
           formData.append(key, data[key]);
         }
       });
-
+  
+      // 🔹 Upload file (package, illustration, result)
+      for (let i = 0; i < 4; i++) {
+        if (data[`package_${i}`] instanceof File) {
+          formData.append(`package_${i}`, data[`package_${i}`]);
+        }
+      }
+  
+      for (let i = 0; i < 2; i++) {
+        if (data[`package_illustration_${i}`] instanceof File) {
+          formData.append(`package_illustration_${i}`, data[`package_illustration_${i}`]);
+        }
+      }
+  
+      if (data.result_illustration instanceof File) {
+        formData.append("result_illustration", data.result_illustration);
+      }
+  
+      // Tambahkan hubungan SPIS dan User
       formData.append("spis_id", spisId);
       formData.append("user_id", userId);
-
-      const response = await api.post("/spps", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      toast.success("SPPS saved successfully!");
-      onNext(data);
+  
+      let response;
+  
+      if (existingSppsId) {
+        // 🟡 Jika sudah pernah dibuat → UPDATE
+        response = await api.put(`/spps/${existingSppsId}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        toast.info("SPPS updated successfully!");
+      } else {
+        // 🟢 Jika baru pertama kali → INSERT
+        response = await api.post("/spps", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+  
+        // Simpan id SPPS ke localStorage untuk referensi update berikutnya
+        if (response.data?.id) {
+          localStorage.setItem("spps_id", response.data.id);
+        }
+  
+        toast.success("SPPS created successfully!");
+      }
+  
+      onNext({ ...data, spps_id: response?.data?.id || existingSppsId });
     } catch (err) {
       console.error("Error saving SPPS:", err);
       toast.error("Failed to save SPPS");
@@ -272,13 +366,104 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
 
         {/* Illustration Package (manual upload) */}
         <div className="mt-4">
-          <p className="mb-2 text-sm">Illustration Package</p>
-          <input type="file" name="illustration_package" onChange={handleChange} />
+          <h4 className="font-medium mb-2">Package (Max 4 Images)</h4>
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+            {[0, 1, 2, 3].map((i) => (
+              <PartImageUpload
+                key={`package_${i}`}
+                label={`Package Image ${i + 1}`}
+                name={`package_${i}`}
+                file={data[`package_${i}`]}
+                previewUrl={data[`package_${i}_url`]}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const url = URL.createObjectURL(file);
+                    setData((prev) => ({
+                      ...prev,
+                      [`package_${i}`]: file,
+                      [`package_${i}_url`]: url,
+                    }));
+                  }
+                }}
+                onDelete={() =>
+                  setData((prev) => ({
+                    ...prev,
+                    [`package_${i}`]: null,
+                    [`package_${i}_url`]: null,
+                  }))
+                }
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Package Illustration */}
+        <div className="mt-4">
+          <h4 className="font-medium mb-2">Package Illustration (Max 2 Images)</h4>
+          <div className="grid grid-cols-2 gap-4">
+            {[0, 1].map((i) => (
+              <PartImageUpload
+                key={`package_illustration_${i}`}
+                label={`Illustration ${i + 1}`}
+                name={`package_illustration_${i}`}
+                file={data[`package_illustration_${i}`]}
+                previewUrl={data[`package_illustration_${i}_url`]}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const url = URL.createObjectURL(file);
+                    setData((prev) => ({
+                      ...prev,
+                      [`package_illustration_${i}`]: file,
+                      [`package_illustration_${i}_url`]: url,
+                    }));
+                  }
+                }}
+                onDelete={() =>
+                  setData((prev) => ({
+                    ...prev,
+                    [`package_illustration_${i}`]: null,
+                    [`package_illustration_${i}_url`]: null,
+                  }))
+                }
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Results Package Illustration */}
+        <div className="mt-4">
+          <h4 className="font-medium mb-2">Results Package Illustration (Max 1 Image)</h4>
+          <PartImageUpload
+            label="Result Illustration"
+            name="result_illustration"
+            file={data.result_illustration}
+            previewUrl={data.result_illustration_url}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                const url = URL.createObjectURL(file);
+                setData((prev) => ({
+                  ...prev,
+                  result_illustration: file,
+                  result_illustration_url: url,
+                }));
+              }
+            }}
+            onDelete={() =>
+              setData((prev) => ({
+                ...prev,
+                result_illustration: null,
+                result_illustration_url: null,
+              }))
+            }
+          />
         </div>
       </div>
 
       {/* Created / Approved */}
-      <div className="mt-6 grid grid-cols-2 gap-4">
+      <div className="mt-6 grid grid-cols-2 gap-4 hidden">
         <div>
           <label className="block text-sm mb-1">Created By</label>
           <input
@@ -302,7 +487,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       </div>
 
       {/* Buttons */}
-      <div className="mt-6 flex justify-between">
+      <div className="mt-6 flex justify-between border-t pt-6">
         <button
           onClick={onPrev}
           className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"

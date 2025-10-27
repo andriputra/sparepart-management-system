@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { setSpisData } from "../store/spisSlice";
 import api from "../api/axios";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import PartImageUpload from "./PartImageUpload";
 import { FiTrash2 } from "react-icons/fi";
 
 const defaultData = {
@@ -511,8 +511,8 @@ export default function StepSpis({ onNext, initialData }) {
             name="name"
             value={data.name}
             onChange={handleChange}
-            className="border p-2 w-full rounded"
-            required
+            className="border p-2 w-full rounded bg-gray-100 text-gray-600 cursor-not-allowed"
+            readOnly
           />
         </div>
         <div>
@@ -522,8 +522,8 @@ export default function StepSpis({ onNext, initialData }) {
             name="department"
             value={data.department}
             onChange={handleChange}
-            className="border p-2 w-full rounded"
-            required
+            className="border p-2 w-full rounded bg-gray-100 text-gray-600 cursor-not-allowed"
+            readOnly
           />
         </div>
         <div>
@@ -533,8 +533,8 @@ export default function StepSpis({ onNext, initialData }) {
             name="telephone"
             value={data.telephone}
             onChange={handleChange}
-            className="border p-2 w-full rounded"
-            required
+            className="border p-2 w-full rounded bg-gray-100 text-gray-600 cursor-not-allowed"
+            readOnly
           />
         </div>
       </div>
@@ -579,125 +579,28 @@ export default function StepSpis({ onNext, initialData }) {
           className="border p-2 w-full rounded mb-3"
           required
         ></textarea>
-
+        
         <div className="mt-6">
           <h3 className="font-semibold mb-2">Upload Part Image</h3>
-          
-          <p className="text-sm mb-2">Part Image 1 <span className="text-red-500">*</span></p>
-          <div className="flex items-stretch gap-6">
-            {/* 🖼️ Preview Image */}
-            <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
-              {data.photo1_url ? (
-                <img
-                  src={data.photo1_url}
-                  alt="Preview"
-                  className="w-full h-full object-cover rounded-md"
-                />
-              ) : data.photo1 instanceof File ? (
-                <img
-                  src={URL.createObjectURL(data.photo1)}
-                  alt="Preview"
-                  className="w-full h-full object-cover rounded-md"
-                />
-              ) : (
-                <span className="text-gray-400 text-sm text-center px-2">No Image</span>
-              )}
-            </div>
+          <PartImageUpload
+            label="Part Image 1"
+            name="photo1"
+            file={data.photo1}
+            previewUrl={data.photo1_url}
+            onChange={handleChange}
+            onDelete={() => setData({ ...data, photo1: null, photo1_url: null })}
+            required
+          />
 
-            {/* 📂 Upload Box */}
-            <div className="flex-1">
-              <div className="h-full border-2 border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition">
-                <input
-                  type="file"
-                  name="photo1"
-                  id="photoUpload1"
-                  onChange={handleChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="photoUpload1"
-                  className="cursor-pointer bg-blue-600 text-white px-4 py-2 text-xs rounded hover:bg-blue-700 transition"
-                >
-                  Upload Photo
-                </label>
-
-                <p className="text-xs text-gray-500 mt-2">
-                  Format: JPG, PNG, JPEG (max 2MB)
-                </p>
-
-                {/* Tombol Delete */}
-                {(data.photo1 || data.photo1_url) && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setData({ ...data, photo1: null, photo1_url: null })
-                    }
-                    className="mt-3 text-red-500 hover:text-red-700 text-sm font-medium"
-                  >
-                    Delete Photo
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <p className="text-sm mt-3 mb-2">Part Image 2 <span className="text-red-500">*</span></p>
-          <div className="flex items-stretch gap-6">
-            {/* 🖼️ Preview Image */}
-            <div className="w-40 h-40 flex items-center justify-center border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden">
-              {data.photo2_url ? (
-                <img
-                  src={data.photo2_url}
-                  alt="Preview"
-                  className="w-full h-full object-cover rounded-md"
-                />
-              ) : data.photo2 instanceof File ? (
-                <img
-                  src={URL.createObjectURL(data.photo2)}
-                  alt="Preview"
-                  className="w-full h-full object-cover rounded-md"
-                />
-              ) : (
-                <span className="text-gray-400 text-sm text-center px-2">No Image</span>
-              )}
-            </div>
-
-            {/* 📂 Upload Box */}
-            <div className="flex-1">
-              <div className="h-full border-2 border-dashed border-gray-300 rounded-md p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition">
-                <input
-                  type="file"
-                  name="photo2"
-                  id="photoUpload2"
-                  onChange={handleChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="photoUpload2"
-                  className="cursor-pointer bg-blue-600 text-white px-4 py-2 text-xs rounded hover:bg-blue-700 transition"
-                >
-                  Upload Photo
-                </label>
-
-                <p className="text-xs text-gray-500 mt-2">
-                  Format: JPG, PNG, JPEG (max 2MB)
-                </p>
-
-                {/* Tombol Delete */}
-                {(data.photo2 || data.photo2_url) && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setData({ ...data, photo2: null, photo2_url: null })
-                    }
-                    className="mt-3 text-red-500 hover:text-red-700 text-sm font-medium"
-                  >
-                    Delete Photo
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+          <PartImageUpload
+            label="Part Image 2"
+            name="photo2"
+            file={data.photo2}
+            previewUrl={data.photo2_url}
+            onChange={handleChange}
+            onDelete={() => setData({ ...data, photo2: null, photo2_url: null })}
+            required
+          />
         </div>
       </div>
 

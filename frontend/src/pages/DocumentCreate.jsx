@@ -45,7 +45,16 @@ export default function DocumentCreate() {
     };
 
     // === Handle Previous Step ===
-    const handlePrev = () => {
+    const handlePrev = (data) => {
+        // if (step > 1) setStep(step - 1);
+        // if (step === 2) setFormData((prev) => ({ ...prev, spps: data }));
+
+        if (step === 2) {
+            setFormData((prev) => ({ ...prev, spps: data }));
+        }
+        if (step === 3) {
+            setFormData((prev) => ({ ...prev, spqs: data }));
+        }
         if (step > 1) setStep(step - 1);
     };
 
@@ -120,7 +129,7 @@ export default function DocumentCreate() {
             {step === 1 && (
             <StepSpis 
                 onNext={handleNext}
-                initialData={formData.spis} // untuk draft auto-fill kalau user kembali
+                initialData={formData.spis}
             />
             )}
 
@@ -128,7 +137,8 @@ export default function DocumentCreate() {
             <StepSpps 
                 onNext={handleNext} 
                 onPrev={handlePrev}
-                initialData={formData.spis} // ⚡ bawa data dari SPIS
+                // initialData={formData.spis} // ⚡ bawa data dari SPIS
+                initialData={{ ...formData.spis, ...formData.spps }}
             />
             )}
 

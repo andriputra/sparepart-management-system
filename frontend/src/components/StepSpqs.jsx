@@ -22,6 +22,8 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
     date: "",
     part_description: "",
     supplier: "",
+    image1: "",
+    image2: "",
     criteria: {
       dimension: "",
       weight: "",
@@ -46,12 +48,6 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
   };
 
   const [data, setData] = useState({ ...defaultData, ...initialData });
-  
-//   useEffect(() => {
-//     if (initialData?.date) {
-//       setData((prev) => ({ ...prev, date: initialData.date }));
-//     }
-//   }, [initialData?.date]);
 
   const loadedRef = useRef(false);
 
@@ -73,6 +69,49 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
     };
 
     fetchUserName();
+  }, []);
+
+  // 🔹 Load data SPIS untuk isi otomatis Quality Criteria
+  useEffect(() => {
+    const loadSpisData = async () => {
+      const spisId = localStorage.getItem("spis_id");
+      if (!spisId) return;
+  
+      try {
+        const res = await api.get(`/spis/${spisId}`);
+        const spisData = res.data;
+        console.log("✅ Loaded SPIS data:", spisData);
+  
+        if (spisData) {
+          setData((prev) => ({
+            ...prev,
+            part_number: spisData.part_number || "",
+            part_description: spisData.part_description || "",
+            supplier: spisData.supplier || "",
+            photo1_url: spisData.photo1_url || "",
+            photo2_url: spisData.photo2_url || "",
+            criteria: {
+              ...prev.criteria,
+              // Isi otomatis dari SPIS
+              package_dimension:
+                spisData.inspection?.package_dimension ||
+                `${spisData.inspection?.length || 0}x${spisData.inspection?.width || 0}x${spisData.inspection?.height || 0} mm`,
+              weight: spisData.inspection?.weight || "",
+              material: Array.isArray(spisData.part_material)
+                ? spisData.part_material.join(", ")
+                : spisData.part_material || "",
+              finishing: spisData.inspection?.visual_condition || "",
+              function: spisData.inspection?.part_system || "",
+              completeness: spisData.inspection?.completeness || "",
+            },
+          }));
+        }
+      } catch (err) {
+        console.error("❌ Failed to load SPIS data:", err);
+      }
+    };
+  
+    loadSpisData();
   }, []);
 
   useEffect(() => {
@@ -147,26 +186,130 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
     }
   };
 
+  // const handleSubmit = async () => {
+  //   try {
+  //     const userId = localStorage.getItem("user_id");
+  //     const spisId = localStorage.getItem("spis_id"); 
+  
+  //     if (!userId) {
+  //       toast.error("Please login first.");
+  //       return;
+  //     }
+  
+  //     if (!spisId) {
+  //       toast.error("SPIS ID tidak ditemukan. Silakan isi SPIS terlebih dahulu.");
+  //       return;
+  //     }
+  
+  //     const payload = {
+  //       ...data,
+  //       user_id: userId,
+  //       spis_id: spisId, // 🔹 Tambahkan ini
+  //     };
+  
+  //     await api.post("/spqs", payload);
+  //     toast.success("SPQS submitted successfully!");
+  //     onNext && onNext(data);
+  
+  //     // Bersihkan doc_no dari localStorage
+  //     localStorage.removeItem("spis_doc_no");
+  //     localStorage.removeItem("spps_doc_no");
+  //     localStorage.removeItem("spqs_doc_no");
+  //     localStorage.removeItem("user_id");
+  //     localStorage.removeItem("spis_id");
+  //     localStorage.removeItem("spps_form_data");
+  //     localStorage.removeItem("spqs_form_data");
+  //     localStorage.removeItem("spis_form_data");
+  //     localStorage.removeItem("spps_id");
+  //     localStorage.removeItem("spqs_id");
+  //     localStorage.removeItem("persist:root");
+  //   } catch (err) {
+  //     console.error("❌ Submit error:", err);
+  //     toast.error("Failed to submit SPQS");
+  //   }
+  // };
   const handleSubmit = async () => {
     try {
       const userId = localStorage.getItem("user_id");
+      const spisId = localStorage.getItem("spis_id"); 
+  
       if (!userId) {
         toast.error("Please login first.");
         return;
       }
-
+  
+      if (!spisId) {
+        toast.error("SPIS ID tidak ditemukan. Silakan isi SPIS terlebih dahulu.");
+        return;
+      }
+  
       const payload = {
         ...data,
         user_id: userId,
+        spis_id: spisId,
       };
-
+  
+      // ⏳ Kirim data ke backend
       await api.post("/spqs", payload);
-      toast.success("SPQS submitted successfully!");
-      onNext && onNext(data);
-      localStorage.removeItem("spis_doc_no");
-      localStorage.removeItem("spps_doc_no");
+  
+      toast.success("✅ SPQS submitted successfully!");
+  
+      // 🧹 1️⃣ Hapus semua localStorage form agar benar-benar fresh
+      [
+        "spis_doc_no",
+        "spps_doc_no",
+        "spqs_doc_no",
+        "spis_form_data",
+        "spps_form_data",
+        "spqs_form_data",
+        "spis_id",
+        "spps_id",
+        "spqs_id",
+      ].forEach((key) => localStorage.removeItem(key));
+  
+      // 🧠 2️⃣ Reset data form agar kosong
+      setData({
+        doc_no: "",
+        part_number: "",
+        date: "",
+        part_description: "",
+        supplier: "",
+        image1: "",
+        image2: "",
+        criteria: {
+          dimension: "",
+          weight: "",
+          material: "",
+          finishing: "",
+          function: "",
+          completeness: "",
+          surface: {
+            wear: false,
+            damage: false,
+            scratch: false,
+            crack: false,
+            corrosion: false,
+            bend: false,
+          },
+        },
+        result: "Pass",
+        comment: "",
+        created_by: "",
+        approved_by: "",
+        checked_by: "",
+      });
+  
+      // ⏳ 3️⃣ Tunggu sebentar biar state & localStorage sinkron
+      await new Promise((r) => setTimeout(r, 200));
+  
+      // 🔁 4️⃣ Panggil parent (Step Container) untuk balik ke Step 1 (SPIS)
+      if (onPrev) onPrev(true);
+  
+      // 🆕 5️⃣ Setelah balik, trigger auto-generate doc_no baru untuk SPIS
+      // (Pastikan di komponen StepSpis.jsx kamu ada useEffect yang generateDocNo saat mount)
+      localStorage.setItem("trigger_new_spis_doc", "1");
     } catch (err) {
-      console.error(err);
+      console.error("❌ Submit error:", err);
       toast.error("Failed to submit SPQS");
     }
   };
@@ -177,10 +320,10 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
       <div className="grid grid-cols-2 gap-4">
         {[
           { label: "Doc No", name: "doc_no", type: "text", readOnly: true },
-          { label: "Date", name: "date", type: "date" },
-          { label: "Part Number", name: "part_number", type: "text" },
-          { label: "Supplier", name: "supplier", type: "text" },
-          { label: "Part Description", name: "part_description", type: "text" },
+          { label: "Date", name: "date", type: "date", readOnly: true },
+          { label: "Part Number", name: "part_number", type: "text", readOnly: true },
+          { label: "Supplier", name: "supplier", type: "text", readOnly: true },
+          { label: "Part Description", name: "part_description", type: "text", readOnly: true },
         ].map((f) => (
           <div key={f.name}>
             <label className="block text-sm mb-1">{f.label}</label>
@@ -197,27 +340,105 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         ))}
       </div>
 
+      {/* Foto diambil dari SPIS (photo1 & photo2) */}
+      <div className="mt-6">
+        <h3 className="font-semibold mb-2">Foto dari SPIS</h3>
+        <div className="border p-3 rounded mb-4 flex justify-between gap-3">
+          {/* Foto 1 */}
+          <div className="flex-1">
+            <p className="mb-2 text-sm">Foto 1</p>
+            <div className="w-full h-40 border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden flex items-center justify-center">
+              {data.photo1_url ? (
+                <img
+                  src={data.photo1_url}
+                  alt="Part Image 1"
+                  className="w-full h-full object-contain rounded-md"
+                />
+              ) : (
+                <span className="text-gray-400 text-sm">No Image</span>
+              )}
+            </div>
+          </div>
+
+          {/* Foto 2 */}
+          <div className="flex-1">
+            <p className="mb-2 text-sm">Foto 2</p>
+            <div className="w-full h-40 border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden flex items-center justify-center">
+              {data.photo2_url ? (
+                <img
+                  src={data.photo2_url}
+                  alt="Part Image 2"
+                  className="w-full h-full object-contain rounded-md"
+                />
+              ) : (
+                <span className="text-gray-400 text-sm">No Image</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Quality Criteria */}
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Quality Criteria</h3>
+
         <div className="grid grid-cols-2 gap-4">
           {[
-            "dimension",
+            "package_dimension",
             "weight",
             "material",
             "finishing",
             "function",
             "completeness",
           ].map((crit) => (
-            <div key={crit}>
-              <label className="block text-sm mb-1 capitalize">{crit}</label>
+            <div key={crit} className="border p-3 rounded">
+              <label className="block text-sm font-semibold mb-1 capitalize">
+                {crit}
+              </label>
+
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  type="checkbox"
+                  name={`${crit}_ok`}
+                  checked={data.criteria[`${crit}_ok`] || false}
+                  onChange={(e) =>
+                    setData((prev) => ({
+                      ...prev,
+                      criteria: {
+                        ...prev.criteria,
+                        [`${crit}_ok`]: e.target.checked,
+                      },
+                    }))
+                  }
+                />
+                <span className="text-sm text-gray-700">Sesuai spesifikasi</span>
+              </div>
+
               <input
                 type="text"
                 name={crit}
                 value={data.criteria[crit]}
                 onChange={handleChange}
+                className="border p-2 w-full rounded mb-2"
+                placeholder={`Nilai dari SPIS (${crit})`}
+                readOnly
+              />
+
+              <input
+                type="text"
+                name={`${crit}_remark`}
+                value={data.criteria[`${crit}_remark`] || ""}
+                onChange={(e) =>
+                  setData((prev) => ({
+                    ...prev,
+                    criteria: {
+                      ...prev.criteria,
+                      [`${crit}_remark`]: e.target.value,
+                    },
+                  }))
+                }
                 className="border p-2 w-full rounded"
-                placeholder="according to specifications or measured value"
+                placeholder="Keterangan (jika tidak sesuai)"
               />
             </div>
           ))}
@@ -226,7 +447,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
 
       {/* Surface Condition */}
       <div className="mt-6">
-        <h3 className="font-semibold mb-2">Surface Condition</h3>
+        <h3 className="font-semibold mb-2">Kondisi Part</h3>
         <div className="grid grid-cols-3 gap-4">
           {Object.keys(data.criteria.surface).map((key) => (
             <label key={key} className="flex items-center space-x-2">
@@ -274,7 +495,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
       </div>
 
       {/* Signature */}
-      <div className="mt-6 grid grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-3 gap-4 hidden">
         <div>
           <label className="block text-sm mb-1">Created By</label>
           <input
@@ -308,7 +529,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
       </div>
 
       {/* Buttons */}
-      <div className="flex justify-between mt-6">
+      <div className="flex justify-between mt-6 border-t pt-6">
         <button
           onClick={onPrev}
           className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"

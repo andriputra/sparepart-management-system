@@ -75,9 +75,7 @@ export default function SparepartList() {
     return (
         <DashboardLayout>
         <div className="p-6">
-            <h1 className="text-2xl font-semibold mb-6 text-gray-700">
-            Daftar Dokumen Sparepart
-            </h1>
+            <h1 className="text-2xl font-semibold mb-6 text-gray-700">Daftar Dokumen Sparepart</h1>
 
             {spareparts.length === 0 ? (
             <div className="text-center py-10 text-gray-500">

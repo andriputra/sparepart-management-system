@@ -6,76 +6,133 @@ const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
 // ✅ Save final SPPS
-router.post(
-    "/",
-    upload.fields([
-      { name: "illustration_part" },
-      { name: "illustration_package" },
-    ]),
-    async (req, res) => {
-      try {
-        const fields = req.body;
-        const { user_id, spis_id } = fields;
-  
-        // Simpan data SPPS
-        await db.query("INSERT INTO spps SET ?", [fields]);
-  
-        // ✅ Update progress di tabel SPIS
-        await db.query(
-            "UPDATE spis SET progress_status = 'step2' WHERE id = ?",
-            [spis_id]
-        );
-  
-        res.json({ message: "SPPS saved successfully" });
-      } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Failed to save SPPS" });
-      }
+router.post("/", upload.any(), async (req, res) => {
+  try {
+    const fields = req.body;
+    const { user_id, spis_id } = fields;
+
+    // ✅ Tambahkan validasi wajib
+    if (!user_id || !spis_id) {
+      return res.status(400).json({ error: "user_id dan spis_id wajib diisi" });
     }
-);
+
+    // 🔹 Map file upload
+    const uploadedFiles = {};
+    (req.files || []).forEach((file) => {
+      uploadedFiles[file.fieldname] = `/uploads/${file.filename}`;
+    });
+
+    // 🔹 Kolom valid di tabel `spps`
+    const allowedFields = [
+      "doc_no", "date", "part_number", "supplier", "part_description", "qty",
+      "part_weight", "part_dimension", "created_by", "approved_by",
+      "package_material", "package_code", "package_detail",
+      "spis_id", "user_id",
+      "package_0", "package_1", "package_2", "package_3",
+      "package_illustration_0", "package_illustration_1", "result_illustration"
+    ];
+
+    const rawData = { ...fields, ...uploadedFiles };
+    const finalData = Object.keys(rawData)
+      .filter((key) => allowedFields.includes(key))
+      .reduce((obj, key) => {
+        obj[key] = rawData[key];
+        return obj;
+      }, {});
+
+    const [result] = await db.query("INSERT INTO spps SET ?", [finalData]);
+
+    await db.query("UPDATE spis SET progress_status = 'step2' WHERE id = ?", [spis_id]);
+
+    res.json({ message: "SPPS saved successfully", id: result.insertId });
+  } catch (err) {
+    console.error("❌ Error saving SPPS:", err);
+    res.status(500).json({ error: "Failed to save SPPS" });
+  }
+});
 
 router.get("/next-docno", async (req, res) => {
-    const conn = await db.getConnection();
-    await conn.beginTransaction();
-  
-    try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-  
-      // Lock data terakhir
-      const [rows] = await conn.query(
-        "SELECT doc_no FROM spps WHERE doc_no LIKE ? ORDER BY id DESC LIMIT 1 FOR UPDATE",
-        [`IM/SPPS/${year}/${month}/%`]
-      );
-  
-      let nextNumber = 1;
-      if (rows.length > 0) {
-        const lastDocNo = rows[0].doc_no;
-        const parts = lastDocNo.split("/");
-        const lastNumber = parseInt(parts[4], 10);
-        nextNumber = lastNumber + 1;
-      }
-  
-      const padded = String(nextNumber).padStart(5, "0");
-      const nextDocNo = `IM/SPPS/${year}/${month}/${padded}`;
-  
-      // ✅ Sisipkan catatan dummy agar nomor "dianggap terpakai"
-      await conn.query(
-        "INSERT INTO spps (doc_no, date, created_by) VALUES (?, NOW(), 'SYSTEM_RESERVED')",
-        [nextDocNo]
-      );
-  
-      await conn.commit();
-      conn.release();
-  
-      res.json({ nextDocNo });
-    } catch (err) {
-      await conn.rollback();
-      conn.release();
-      console.error("Error generating next doc number:", err);
-      res.status(500).json({ error: "Failed to generate next doc_no" });
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+
+    const [rows] = await db.query(
+      "SELECT doc_no FROM spps WHERE doc_no LIKE ? ORDER BY id DESC LIMIT 1",
+      [`IM/SPPS/${year}/${month}/%`]
+    );
+
+    let nextNumber = 1;
+    if (rows.length > 0) {
+      const lastDocNo = rows[0].doc_no;
+      const parts = lastDocNo.split("/");
+      const lastNumber = parseInt(parts[4], 10);
+      nextNumber = lastNumber + 1;
     }
+
+    const padded = String(nextNumber).padStart(5, "0");
+    const nextDocNo = `IM/SPPS/${year}/${month}/${padded}`;
+
+    res.json({ nextDocNo });
+  } catch (err) {
+    console.error("Error generating next doc number:", err);
+    res.status(500).json({ error: "Failed to generate next doc_no" });
+  }
+});
+
+router.put("/:id", upload.any(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Gabungkan text field dan file field
+    const fields = { ...req.body };
+    const uploadedFiles = {};
+
+    (req.files || []).forEach((file) => {
+      uploadedFiles[file.fieldname] = `/uploads/${file.filename}`;
+    });
+
+    const allowedFields = [
+      "qty",
+      "package_material",
+      "package_code",
+      "package_detail",
+      "package_0",
+      "package_1",
+      "package_2",
+      "package_3",
+      "package_illustration_0",
+      "package_illustration_1",
+      "result_illustration",
+    ];
+
+    // Gabung dan filter
+    const rawData = { ...fields, ...uploadedFiles };
+    const finalData = Object.keys(rawData)
+      .filter((key) => allowedFields.includes(key))
+      .reduce((obj, key) => {
+        obj[key] = rawData[key];
+        return obj;
+      }, {});
+
+    // ✅ Tambahkan safety check
+    if (Object.keys(finalData).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+
+    // Jalankan update
+    if (finalData.qty === "" || finalData.qty === null || finalData.qty === undefined) {
+      delete finalData.qty; // hindari error
+    } else {
+      finalData.qty = parseInt(finalData.qty, 10);
+    }
+
+    await db.query("UPDATE spps SET ? WHERE id = ?", [finalData, id]);
+
+    res.json({ message: "SPPS updated successfully", updated: finalData });
+  } catch (err) {
+    console.error("❌ Error updating SPPS:", err);
+    res.status(500).json({ error: "Failed to update SPPS" });
+  }
 });
 
 // ✅ Save draft
