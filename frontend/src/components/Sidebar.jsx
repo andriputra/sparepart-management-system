@@ -4,6 +4,7 @@ import { FiMenu, FiLogOut, FiFileText, FiHome, FiSliders, FiCpu, FiUser } from "
 import api from "../api/axios";
 import { toast } from "react-toastify";
 import ModalConfirm from "./ModalConfirm"; 
+import { clearDocuments } from "../utils/clearDocuments";
 
 export default function Sidebar() {
 const [collapsed, setCollapsed] = useState(false);
@@ -27,6 +28,7 @@ const navigate = useNavigate();
     }, []);
 
     const handleLogout = () => {
+        clearDocuments();
         toast.info("Anda telah logout.", { autoClose: 1500 });
         setTimeout(() => {
         localStorage.clear();

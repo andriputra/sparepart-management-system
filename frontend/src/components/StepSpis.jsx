@@ -52,19 +52,38 @@ export default function StepSpis({ onNext, initialData }) {
   const { spis } = useSelector((state) => state.spis);
 
   // 🔹 Sinkronisasi state lokal dan Redux
-  const [data, setData] = useState(spis || defaultData);
+  const [data, setData] = useState(initialData && Object.keys(initialData).length > 0 ? initialData : spis || defaultData);
 
-  // 🔸 Gunakan useEffect agar data form selalu ikut Redux (terutama setelah back)
   useEffect(() => {
     if (spis && Object.keys(spis).length > 0) {
       setData((prev) => ({
         ...prev,
-        ...defaultData,
         ...spis,
-        inspection: { ...defaultData.inspection, ...(spis.inspection || {}) },
+        inspection: { ...prev.inspection, ...(spis.inspection || {}) },
+        part_images: spis.part_images || prev.part_images || [],
+        part_material: spis.part_material || prev.part_material || [],
       }));
     }
   }, [spis]);
+
+  // 🔹 Sinkronisasi ulang data dari parent (Redux) jika user klik Back
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      const isDifferent = JSON.stringify(initialData) !== JSON.stringify(data);
+      if (isDifferent) {
+        setData((prev) => ({
+          ...prev,
+          ...initialData,
+          inspection: {
+            ...prev.inspection,
+            ...(initialData.inspection || {}),
+          },
+          part_images: initialData.part_images || prev.part_images || [],
+          part_material: initialData.part_material || prev.part_material || [],
+        }));
+      }
+    }
+  }, [initialData]);
 
   // ✅ Setiap kali data berubah, langsung simpan ke Redux (dua arah)
   useEffect(() => {
@@ -136,11 +155,25 @@ export default function StepSpis({ onNext, initialData }) {
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
     if (userId && !loadedRef.current) {
-      loadedRef.current = true; 
+      loadedRef.current = true;
+    
+      const submittedDocNo = localStorage.getItem("spis_doc_no");
+      const submittedId = localStorage.getItem("spis_id");
+    
+      // ⚡ Abaikan jika sudah pernah submit (punya doc_no & id)
+      if (submittedDocNo && submittedId) {
+        console.log("✅ SPIS sudah disubmit, abaikan draft lama");
+        return;
+      }
       api.get(`/spis/draft/${userId}`).then((res) => {
         if (res.data) {
           const draft = res.data;
-      
+
+          const existingSpisDocNo = localStorage.getItem("spis_doc_no");
+          if (existingSpisDocNo && existingSpisDocNo === draft.doc_no) {
+            console.log("Draft diabaikan karena sudah disubmit");
+            return;
+          }
           // 🧠 Pastikan part_images dikonversi ke format array [{ file, url, description }]
           let parsedImages = [];
           try {
@@ -227,9 +260,7 @@ export default function StepSpis({ onNext, initialData }) {
   const serializeImages = (images) => {
     if (!images || !Array.isArray(images)) return [];
     return images.map((img) => ({
-      url:
-        img.url ||
-        (img.file ? URL.createObjectURL(img.file) : null),
+      url: img.url || "",
       description: img.description || "",
     }));
   };
@@ -323,36 +354,46 @@ export default function StepSpis({ onNext, initialData }) {
       // 🔹 Append JSON fields
       formData.append("part_material", JSON.stringify(finalMaterials));
       formData.append("inspection", JSON.stringify(data.inspection || {}));
-  
-      // 🔹 Upload Part Images (max 8)
-      if (data.part_images && data.part_images.length > 0) {
+      
+      if (Array.isArray(data.part_images) && data.part_images.length > 0) {
         const imageDescriptions = [];
         const imageUrls = [];
-
+        const usedFiles = new Set();
+      
         for (const img of data.part_images) {
-          if (img.file instanceof File) {
-            // kirim file baru
+          // Abaikan entry kosong total
+          if (!img || (!img.url && !img.file)) continue;
+      
+          // 🔹 Upload file baru
+          if (img.file instanceof File && !usedFiles.has(img.file.name)) {
             formData.append("part_images", img.file);
             imageDescriptions.push(img.description || "");
-            imageUrls.push("");
-          } else if (img.url) {
-            // kirim URL lama (misal hasil draft)
+            imageUrls.push(""); // biar tetap sama panjang
+            usedFiles.add(img.file.name);
+            continue;
+          }
+      
+          // 🔹 Gunakan URL dari server (bukan blob)
+          if (img.url && !img.url.startsWith("blob:") && !imageUrls.includes(img.url)) {
             imageUrls.push(img.url);
             imageDescriptions.push(img.description || "");
           }
         }
-
-        // 🔸 kirim semua data ke backend
+      
         formData.append("part_image_urls", JSON.stringify(imageUrls));
         formData.append("part_image_descriptions", JSON.stringify(imageDescriptions));
       }
-  
-      // 🔹 Append main photos
-      if (data.photo1 instanceof File) formData.append("photo1", data.photo1);
-      else if (data.photo1_url) formData.append("photo1_url", data.photo1_url);
-  
-      if (data.photo2 instanceof File) formData.append("photo2", data.photo2);
-      else if (data.photo2_url) formData.append("photo2_url", data.photo2_url);
+
+      if (data.photo1 && data.photo2 && data.photo1 === data.photo2) {
+        console.warn("⚠️ Photo1 dan Photo2 sama, hanya upload sekali.");
+        formData.append("photo1", data.photo1);
+      } else {
+        if (data.photo1 instanceof File) formData.append("photo1", data.photo1);
+        else if (data.photo1_url) formData.append("photo1_url", data.photo1_url);
+      
+        if (data.photo2 instanceof File) formData.append("photo2", data.photo2);
+        else if (data.photo2_url) formData.append("photo2_url", data.photo2_url);
+      }
   
       // 🔹 Submit to backend
       const response = await api.post("/spis", formData, {
@@ -371,19 +412,14 @@ export default function StepSpis({ onNext, initialData }) {
       console.error("Error saving SPIS:", err);
       toast.error("Gagal menyimpan SPIS");
     }
+
     dispatch(setSpisData(data));
     onNext(data);
   };
 
   useEffect(() => {
-    if (spis && Object.keys(spis).length > 0) {
-      setData((prev) => ({
-        ...prev,
-        ...spis,
-        inspection: { ...prev.inspection, ...(spis.inspection || {}) },
-      }));
-    }
-  }, []); 
+    localStorage.setItem("spis_form_data", JSON.stringify(data));
+  }, [data]);
 
   const handleSaveDraft = async () => {
     try {
@@ -453,6 +489,26 @@ export default function StepSpis({ onNext, initialData }) {
       }
     }
   };
+
+  // 🔹 Tampilkan package_dimension dalam format "L x W x H"
+  useEffect(() => {
+    const { length, width, height } = data.inspection;
+  
+    if (length || width || height) {
+      const formatted = [
+        length?.trim() || "-",
+        width?.trim() || "-",
+        height?.trim() || "-",
+      ].join(" x ");
+  
+      if (data.inspection.package_dimension !== formatted) {
+        setData((prev) => ({
+          ...prev,
+          inspection: { ...prev.inspection, package_dimension: formatted },
+        }));
+      }
+    }
+  }, [data.inspection.length, data.inspection.width, data.inspection.height]);
 
   return (
     <div>
@@ -671,17 +727,12 @@ export default function StepSpis({ onNext, initialData }) {
                     type="text"
                     name={field}
                     value={data.inspection[field]}
-                    onChange={(e) => {
-                      const { value } = e.target;
-
-                      if (isNumeric && value !== "" && !/^\d*\.?\d*$/.test(value)) {
-                        return; 
-                      }
-
-                      handleInspectionChange(e);
-                    }}
-                    placeholder={isNumeric ? "Enter number" : ""}
-                    className="border p-2 w-full rounded pr-10"
+                    onChange={handleInspectionChange}
+                    placeholder={field === "package_dimension" ? "Auto-calculated" : ""}
+                    className={`border p-2 w-full rounded pr-10 ${
+                      field === "package_dimension" ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""
+                    }`}
+                    readOnly={field === "package_dimension"}
                     required
                   />
                   {suffix && (
@@ -689,6 +740,7 @@ export default function StepSpis({ onNext, initialData }) {
                       {suffix}
                     </span>
                   )}
+                  
                 </div>
               </div>
             );
@@ -706,7 +758,6 @@ export default function StepSpis({ onNext, initialData }) {
         ></textarea>
       </div>
 
-      {/* Tambahkan field Upload Part Image dan Field Keterangannya, bisa dii tambah user sampai dengan 8x */}
       {/* 🔹 Upload Part Images (Max 8) */}
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Upload Part Images (Max 8)</h3>
@@ -739,7 +790,8 @@ export default function StepSpis({ onNext, initialData }) {
                       if (!file) return;
                       setData((prev) => {
                         const updated = [...(prev.part_images || [])];
-                        updated[index] = { ...updated[index], file };
+                        // updated[index] = { ...updated[index], file };
+                        updated[index] = { file, url: "", description: updated[index]?.description || "" };
                         return { ...prev, part_images: updated };
                       });
                     }}

@@ -48,7 +48,7 @@ export default function Dashboard() {
         </h1>
 
         {/* === Overview Cards === */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
           <div className="bg-blue-600 text-white p-6 rounded-lg shadow flex items-center gap-4">
             <FaClipboardList className="text-4xl opacity-80" />
             <div>
@@ -65,13 +65,23 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-green-600 text-white p-6 rounded-lg shadow flex items-center gap-4">
+          <div className="bg-red-400 text-white p-6 rounded-lg shadow flex items-center gap-4">
             <FaUserCheck className="text-4xl opacity-80" />
             <div>
               <p className="text-sm uppercase text-green-100">
                 Siap Approval
               </p>
               <h2 className="text-3xl font-bold">{overview.totalApproval}</h2>
+            </div>
+          </div>
+
+          <div className="bg-green-600 text-white p-6 rounded-lg shadow flex items-center gap-4">
+            <FaUserCheck className="text-4xl opacity-80" />
+            <div>
+              <p className="text-sm uppercase text-green-100">
+                Approval
+              </p>
+              <h2 className="text-3xl font-bold">{overview.totalApproved}</h2>
             </div>
           </div>
         </div>

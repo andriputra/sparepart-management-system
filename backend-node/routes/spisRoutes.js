@@ -134,47 +134,47 @@ router.post(
       const inspectionJSON =
         typeof inspection === "string" ? JSON.parse(inspection) : inspection;
 
-      // === Handle multiple part images (combine file + url + description)
+      // === Handle multiple part images
       const imageUrls =
-      req.body.part_image_urls && typeof req.body.part_image_urls === "string"
-        ? JSON.parse(req.body.part_image_urls)
-        : [];
+        req.body.part_image_urls && typeof req.body.part_image_urls === "string"
+          ? JSON.parse(req.body.part_image_urls)
+          : [];
       const imageDescs =
-      req.body.part_image_descriptions &&
-      typeof req.body.part_image_descriptions === "string"
-        ? JSON.parse(req.body.part_image_descriptions)
-        : [];
+        req.body.part_image_descriptions &&
+        typeof req.body.part_image_descriptions === "string"
+          ? JSON.parse(req.body.part_image_descriptions)
+          : [];
       const uploadedFiles = req.files?.part_images || [];
 
       const combinedImages = [];
-
       for (let i = 0; i < Math.max(uploadedFiles.length, imageUrls.length); i++) {
-      combinedImages.push({
-        url: uploadedFiles[i]
-          ? `/uploads/spis/${uploadedFiles[i].filename}`
-          : imageUrls[i] || null,
-        description: imageDescs[i] || "",
-      });
+        combinedImages.push({
+          url: uploadedFiles[i]
+            ? `/uploads/spis/${uploadedFiles[i].filename}`
+            : imageUrls[i] || null,
+          description: imageDescs[i] || "",
+        });
       }
 
-      // === Check existing submitted SPIS
+      // === Cek apakah doc_no sudah ada di DB
       const [existing] = await db.query(
-        "SELECT id FROM spis WHERE user_id = ? AND status = 'submitted' LIMIT 1",
-        [user_id]
+        "SELECT id FROM spis WHERE doc_no = ? LIMIT 1",
+        [doc_no]
       );
 
       const safeDate = date && date.trim() !== "" ? date : null;
 
       if (existing.length > 0) {
+        // === UPDATE jika memang edit SPIS tertentu
         await db.query(
           `UPDATE spis SET 
-            doc_no=?, date=?, location=?, code=?, name=?, department=?, telephone=?,
+            user_id=?, date=?, location=?, code=?, name=?, department=?, telephone=?,
             part_number=?, supplier=?, part_description=?, detail_part=?, description=?,
             photo1=?, photo2=?, part_material=?, inspection=?, part_images=?,
             created_by=?, approved_by=?, status=?, updated_at=NOW()
           WHERE id=?`,
           [
-            doc_no,
+            user_id,
             safeDate,
             location,
             code,
@@ -203,7 +203,7 @@ router.post(
         });
       }
 
-      // === Insert new SPIS
+      // === INSERT baru
       const [result] = await db.query(
         `INSERT INTO spis (
           user_id, doc_no, date, location, code, name, department, telephone,
@@ -275,19 +275,38 @@ router.post("/save-draft", async (req, res) => {
   }
 });
 
-// === Get Draft ===
-router.get("/draft/:user_id", async (req, res) => {
-  const { user_id } = req.params;
+router.get("/draft/:userId", async (req, res) => {
+  const { userId } = req.params;
   try {
-    const [rows] = await db.query(
-      "SELECT data_json FROM spis_draft WHERE user_id = ?",
-      [user_id]
+    // Ambil draft user
+    const [draftRows] = await db.query(
+      "SELECT * FROM spis_draft WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1",
+      [userId]
     );
 
-    res.json(rows.length ? JSON.parse(rows[0].data_json) : null);
+    if (!draftRows.length) {
+      return res.json(null);
+    }
+
+    const draft = draftRows[0];
+
+    // 🔍 Cek apakah doc_no sudah pernah di-submit ke tabel SPIS utama
+    const [submitted] = await db.query(
+      "SELECT id FROM spis WHERE doc_no = ?",
+      [draft.doc_no]
+    );
+
+    if (submitted.length > 0) {
+      // Jika sudah disubmit, hapus draft biar gak kebaca lagi
+      await db.query("DELETE FROM spis_draft WHERE id = ?", [draft.id]);
+      return res.json(null);
+    }
+
+    // Jika belum disubmit, kirim datanya
+    return res.json(draft);
   } catch (err) {
     console.error("Error fetching draft:", err);
-    res.status(500).json({ error: "Failed to get draft" });
+    res.status(500).json({ error: "Failed to load draft" });
   }
 });
 

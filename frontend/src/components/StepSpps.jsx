@@ -57,7 +57,21 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
-      setData((prev) => ({ ...prev, ...initialData }));
+      setData((prev) => ({
+        ...prev,
+        ...defaultData,
+        ...initialData,
+        date: initialData.date || prev.date,
+        part_number: initialData.part_number || prev.part_number,
+        supplier: initialData.supplier || prev.supplier,
+        part_description: initialData.part_description || prev.part_description,
+        detail_parts: initialData.detail_part || prev.detail_parts,
+        part_weight: initialData.inspection?.weight || prev.part_weight,
+        part_dimension: initialData.inspection?.package_dimension || prev.part_dimension,
+        created_by: initialData.name || prev.created_by,
+        illustration_part:
+          initialData.photo1_url || initialData.photo1 || prev.illustration_part,
+      }));
     }
   }, [initialData]);
 
@@ -75,6 +89,40 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     };
     initDocNo();
   }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("spps_form_data");
+    const currentDocNo = localStorage.getItem("spis_doc_no");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.doc_no === currentDocNo) {
+        setData(parsed);
+      } else {
+        localStorage.removeItem("spps_form_data"); 
+      }
+    }
+  }, []);
+  
+  useEffect(() => {
+    try {
+      const safeData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => {
+          if (
+            value instanceof File ||
+            typeof value === "function" ||
+            (typeof value === "object" && value !== null && "window" in value)
+          ) {
+            return [key, null];
+          }
+          return [key, value];
+        })
+      );
+  
+      localStorage.setItem("spps_form_data", JSON.stringify(safeData));
+    } catch (err) {
+      console.error("Failed to save SPPS form data:", err);
+    }
+  }, [data]);
 
   // === Load user fullname ===
   useEffect(() => {
@@ -95,10 +143,11 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
   // === Load draft ===
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
-    if (userId && !loadedRef.current) {
+    const activeDocNo = localStorage.getItem("spis_doc_no");
+    if (userId && !loadedRef.current && !activeDocNo) {
       loadedRef.current = true;
       api.get(`/spps/draft/${userId}`).then((res) => {
-        if (res.data) {
+        if (res.data && !res.data.doc_no) {
           setData((prev) => ({ ...prev, ...res.data }));
           toast.info("Loaded your saved SPPS draft.");
         }
@@ -164,39 +213,6 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     }
   };
 
-  // const handleNext = async () => {
-  //   try {
-  //     const formData = new FormData();
-  //     const userId = localStorage.getItem("user_id");
-  //     const spisId = localStorage.getItem("spis_id");
-
-  //     if (!spisId) {
-  //       toast.error("SPIS ID tidak ditemukan. Silakan mulai dari Step 1 (SPIS).");
-  //       return;
-  //     }
-
-  //     Object.keys(data).forEach((key) => {
-  //       if (data[key] instanceof File) {
-  //         formData.append(key, data[key]);
-  //       } else {
-  //         formData.append(key, data[key]);
-  //       }
-  //     });
-
-  //     formData.append("spis_id", spisId);
-  //     formData.append("user_id", userId);
-
-  //     const response = await api.post("/spps", formData, {
-  //       headers: { "Content-Type": "multipart/form-data" },
-  //     });
-
-  //     toast.success("SPPS saved successfully!");
-  //     onNext(data);
-  //   } catch (err) {
-  //     console.error("Error saving SPPS:", err);
-  //     toast.error("Failed to save SPPS");
-  //   }
-  // };
   const handleNext = async () => {
     try {
       const formData = new FormData();
@@ -277,6 +293,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       }
   
       onNext({ ...data, spps_id: response?.data?.id || existingSppsId });
+      
     } catch (err) {
       console.error("Error saving SPPS:", err);
       toast.error("Failed to save SPPS");

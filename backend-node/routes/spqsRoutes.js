@@ -3,21 +3,16 @@ import db from "../config/db.js";
 
 const router = express.Router();
 
-/**
- * ✅ CREATE FINAL SPQS
- * Data SPQS disimpan sebagai JSON (data_json)
- * dan update progress_status SPIS menjadi 'completed'
- */
 router.post("/", async (req, res) => {
   try {
-    const { user_id, spis_id, doc_no, ...rest } = req.body;
+    const { user_id, spis_id, doc_no, criteria = {}, result, comment, created_by, approved_by, checked_by, date, part_number, part_description, supplier } = req.body;
 
-    // ✅ Validasi input wajib
+    // Validasi
     if (!user_id || !spis_id) {
       return res.status(400).json({ error: "user_id dan spis_id wajib diisi" });
     }
 
-    // ✅ Ambil nomor dokumen otomatis jika belum dikirim
+    // Generate doc_no otomatis jika belum ada
     let finalDocNo = doc_no;
     if (!finalDocNo) {
       const now = new Date();
@@ -41,19 +36,97 @@ router.post("/", async (req, res) => {
       finalDocNo = `IM/SPQS/${year}/${month}/${padded}`;
     }
 
-    // ✅ Simpan data SPQS
+    // --- Normalize data ---
+    const safeCriteria = {
+      package_dimension: criteria.package_dimension || "",
+      weight: criteria.weight || "",
+      material: criteria.material || "",
+      finishing: criteria.finishing || "",
+      function: criteria.function || "",
+      completeness: criteria.completeness || "",
+    };
+
+    const surface = criteria.surface || {};
+    const safeSurface = {
+      wear: surface.wear ? 1 : 0,
+      damage: surface.damage ? 1 : 0,
+      scratch: surface.scratch ? 1 : 0,
+      crack: surface.crack ? 1 : 0,
+      corrosion: surface.corrosion ? 1 : 0,
+      bend: surface.bend ? 1 : 0,
+    };
+
+    const safeResult = result || "Pass";
+    const safeComment = comment || "";
+    const safeCreatedBy = created_by || "";
+    const safeApprovedBy = approved_by || "";
+    const safeCheckedBy = checked_by || "";
+    const safeDate = date || new Date();
+
+    // --- INSERT query lengkap ---
     await db.query(
-      "INSERT INTO spqs (doc_no, user_id, spis_id, data_json, created_at) VALUES (?, ?, ?, ?, NOW())",
-      [finalDocNo, user_id, spis_id, JSON.stringify(rest)]
+      `INSERT INTO spqs (
+        spis_id,
+        user_id,
+        doc_no,
+        part_number,
+        date,
+        part_description,
+        supplier,
+        criteria_dimension,
+        criteria_weight,
+        criteria_material,
+        criteria_finishing,
+        criteria_function,
+        criteria_completeness,
+        surface_wear,
+        surface_damage,
+        surface_scratch,
+        surface_crack,
+        surface_corrosion,
+        surface_bend,
+        result,
+        comment,
+        created_by,
+        approved_by,
+        checked_by,
+        status,
+        data_json,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, NOW())`,
+      [
+        spis_id,
+        user_id,
+        finalDocNo,
+        part_number || "",
+        safeDate,
+        part_description || "",
+        supplier || "",
+        safeCriteria.package_dimension,
+        safeCriteria.weight,
+        safeCriteria.material,
+        safeCriteria.finishing,
+        safeCriteria.function,
+        safeCriteria.completeness,
+        safeSurface.wear,
+        safeSurface.damage,
+        safeSurface.scratch,
+        safeSurface.crack,
+        safeSurface.corrosion,
+        safeSurface.bend,
+        safeResult,
+        safeComment,
+        safeCreatedBy,
+        safeApprovedBy,
+        safeCheckedBy,
+        JSON.stringify(req.body || {})
+      ]
     );
 
-    // ✅ Update progress_status di SPIS
-    await db.query(
-      "UPDATE spis SET progress_status = 'completed' WHERE id = ?",
-      [spis_id]
-    );
+    // --- Update progress di SPIS ---
+    await db.query("UPDATE spis SET progress_status = 'completed' WHERE id = ?", [spis_id]);
 
-    res.json({ message: "SPQS berhasil disimpan", doc_no: finalDocNo });
+    res.json({ message: "✅ SPQS berhasil disimpan", doc_no: finalDocNo });
   } catch (err) {
     console.error("❌ Error saving SPQS:", err);
     res.status(500).json({ error: "Gagal menyimpan SPQS" });
@@ -131,39 +204,6 @@ router.get("/next-docno", async (req, res) => {
   }
 });
 
-/**
- * ✅ GET SPIS DETAIL BY ID (untuk auto-fill form SPQS)
- */
-// router.get("/:id", async (req, res) => {
-//   try {
-//     const [rows] = await db.query(
-//       `SELECT id, part_number, part_description, part_dimension, part_weight,
-//               part_material, inspection, photo1_url AS illustration_part
-//          FROM spis
-//         WHERE id = ?`,
-//       [req.params.id]
-//     );
-
-//     if (rows.length === 0)
-//       return res.status(404).json({ error: "SPIS tidak ditemukan" });
-
-//     // Parse inspection JSON jika ada
-//     const spisData = rows[0];
-//     if (spisData.inspection && typeof spisData.inspection === "string") {
-//       try {
-//         spisData.inspection = JSON.parse(spisData.inspection);
-//       } catch (e) {
-//         console.warn("⚠️ Failed to parse inspection JSON:", e.message);
-//       }
-//     }
-
-//     res.json(spisData);
-//   } catch (err) {
-//     console.error("❌ Failed to fetch SPIS:", err);
-//     res.status(500).json({ error: "Gagal mengambil data SPIS" });
-//   }
-// });
-// ✅ Get SPIS by ID
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {

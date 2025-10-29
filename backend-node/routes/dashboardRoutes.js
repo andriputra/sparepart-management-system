@@ -11,14 +11,18 @@ router.get("/overview", authenticate, async (req, res) => {
     const [[totalDraft]] = await db.query(
       "SELECT COUNT(*) AS total FROM spis WHERE status = 'draft'"
     );
-    const [[totalApproval]] = await db.query(
-      "SELECT COUNT(*) AS total FROM spis WHERE status = 'ready'"
+    const [[totalSubmitted]] = await db.query(
+      "SELECT COUNT(*) AS total FROM spis WHERE status = 'submitted'"
+    );
+    const [[totalApproved]] = await db.query(
+      "SELECT COUNT(*) AS total FROM spis WHERE approved_by IS NOT NULL"
     );
 
     res.json({
       totalData: totalData.total,
       totalDraft: totalDraft.total,
-      totalApproval: totalApproval.total,
+      totalApproval: totalSubmitted.total, // siap approval
+      totalApproved: totalApproved.total, // sudah di-approve
     });
   } catch (err) {
     console.error(err);

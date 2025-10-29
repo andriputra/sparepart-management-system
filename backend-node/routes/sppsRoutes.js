@@ -163,4 +163,11 @@ router.get("/draft/:user_id", async (req, res) => {
   }
 });
 
+
+router.delete("/clear-draft/:userId", async (req, res) => {
+  const { userId } = req.params;
+  await db.query("DELETE FROM spps_draft WHERE user_id = ?", [userId]);
+  res.json({ success: true });
+});
+
 export default router;

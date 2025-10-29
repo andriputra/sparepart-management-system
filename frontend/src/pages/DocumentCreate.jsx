@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { setSpisData } from "../store/spisSlice";
 import StepSpis from "../components/StepSpis";
 import StepSpps from "../components/StepSpps";
 import StepSpqs from "../components/StepSpqs";
@@ -9,7 +8,6 @@ import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
 
 export default function DocumentCreate() {
-    // === Bypass step dari query param ===
     const [searchParams] = useSearchParams();
     const [step, setStep] = useState(1);
 
@@ -24,31 +22,49 @@ export default function DocumentCreate() {
     const dispatch = useDispatch();
     const { form: spisForm } = useSelector((state) => state.spis);
 
-    // === Local formData untuk cross-step ===
     const [formData, setFormData] = useState({
         spis: {},
         spps: {},
         spqs: {},
     });
 
-    // === Handle Next Step ===
     const handleNext = (data) => {
-        if (step === 1) {
-            setFormData((prev) => ({ ...prev, spis: data }));
-            dispatch(setSpisData(data));
+        if (data === "restart") {
+          setFormData({ spis: {}, spps: {}, spqs: {} });
+          localStorage.clear(); 
+          setStep(1);
+          toast.info("Form baru siap diisi.");
+          return;
         }
-        if (step === 2) setFormData((prev) => ({ ...prev, spps: data }));
-        if (step === 3) setFormData((prev) => ({ ...prev, spqs: data }));
-
-        // Kalau belum step terakhir, baru naik step
+      
+        setFormData((prev) => {
+          const newData = { ...prev };
+          if (step === 1) newData.spis = data;
+          if (step === 2) newData.spps = data;
+          if (step === 3) newData.spqs = data;
+      
+          const safeData = JSON.parse(
+            JSON.stringify(newData, (key, value) => {
+              if (
+                value instanceof File ||
+                value instanceof Blob ||
+                value instanceof HTMLElement ||
+                value instanceof Window
+              ) {
+                return undefined;
+              }
+              return value;
+            })
+          );
+      
+          localStorage.setItem("formData", JSON.stringify(safeData));
+          return newData;
+        });
+      
         if (step < 3) setStep(step + 1);
     };
-
     // === Handle Previous Step ===
     const handlePrev = (data) => {
-        // if (step > 1) setStep(step - 1);
-        // if (step === 2) setFormData((prev) => ({ ...prev, spps: data }));
-
         if (step === 2) {
             setFormData((prev) => ({ ...prev, spps: data }));
         }
@@ -59,10 +75,17 @@ export default function DocumentCreate() {
     };
 
     // === Handle Final Submit ===
-    const handleSubmit = () => {
+    const handleSubmit = (action) => {
+        if (action === "restart") {
+          setFormData({ spis: {}, spps: {}, spqs: {} });
+          setStep(1);
+          toast.info("Form baru siap diisi.");
+          return;
+        }
+      
         console.log("Submit All Data:", formData);
-        toast.success("Dokumen berhasil disubmit!");
-    };
+        toast.success("Dokumen berhasil disubmit & siap di-approve!");
+      };
 
     // === Step Titles ===
     const steps = [
@@ -88,33 +111,33 @@ export default function DocumentCreate() {
 
                 {/* Nomor step */}
                 <div
-                className={`w-10 h-10 flex items-center justify-center rounded-full font-semibold text-white z-10 transition-all duration-300 ${
-                    step === s.id
-                    ? "bg-blue-600 scale-110 shadow-lg"
-                    : step > s.id
-                    ? "bg-green-500"
-                    : "bg-gray-300"
-                }`}
-                >
-                {s.id}
+                    className={`w-10 h-10 flex items-center justify-center rounded-full font-semibold text-white z-10 transition-all duration-300 ${
+                        step === s.id
+                        ? "bg-blue-600 scale-110 shadow-lg"
+                        : step > s.id
+                        ? "bg-green-500"
+                        : "bg-gray-300"
+                    }`}
+                    >
+                    {s.id}
                 </div>
 
                 {/* Garis kanan */}
                 {index < steps.length - 1 && (
-                <div
-                    className={`absolute top-5 right-0 w-1/2 h-[2px] border-t-2 border-dashed ${
-                    step > s.id ? "border-green-500" : "border-gray-300"
-                    } transition-all duration-300`}
-                ></div>
+                    <div
+                        className={`absolute top-5 right-0 w-1/2 h-[2px] border-t-2 border-dashed ${
+                        step > s.id ? "border-green-500" : "border-gray-300"
+                        } transition-all duration-300`}
+                    ></div>
                 )}
 
                 {/* Label */}
                 <p
-                className={`text-xs mt-2 text-center ${
-                    step === s.id ? "text-blue-600 font-medium" : "text-gray-500"
-                }`}
-                >
-                {s.label}
+                    className={`text-xs mt-2 text-center ${
+                        step === s.id ? "text-blue-600 font-medium" : "text-gray-500"
+                    }`}
+                    >
+                    {s.label}
                 </p>
             </div>
             ))}

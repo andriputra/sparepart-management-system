@@ -6,6 +6,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import SparepartList from "./pages/SparepartList";
 import Register from "./pages/Register";
 import Settings from "./pages/Settings";
+import SpisView from "./components/spisDoc/SpisView";
 
 export default function App() {
   const isLoggedIn = !!localStorage.getItem("token"); 
@@ -60,6 +61,14 @@ export default function App() {
               <Settings />
             </ProtectedRoute>
           }
+        />
+        <Route 
+          path="/document/view/:doc_no" 
+          element={
+            <ProtectedRoute>
+              <SpisView />
+            </ProtectedRoute>
+          } 
         />
       </Routes>
     </BrowserRouter>

@@ -23,7 +23,6 @@ export default function Login() {
 
       toast.success("Login successful!");
       setTimeout(() => navigate("/dashboard"), 1500);
-      console.log("Login response:", data);
     } catch (err) {
       const message = err.response?.data?.error || "Login failed";
       setError(message);

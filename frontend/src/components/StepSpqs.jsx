@@ -1,18 +1,20 @@
 import { useRef, useState, useEffect } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
+import { clearDocuments } from "../utils/clearDocuments";
+import { FaPlus } from "react-icons/fa";
 
 const generateDocNo = async () => {
-    try {
-      const res = await api.get("/spqs/next-docno");
-      return res.data.nextDocNo;
-    } catch (err) {
-      console.error("Failed to get doc no:", err);
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      return `IM/SPQS/${year}/${month}/00001`;
-    }
+  try {
+    const res = await api.get("/spqs/next-docno");
+    return res.data.nextDocNo;
+  } catch (err) {
+    console.error("Failed to get doc no:", err);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    return `IM/SPQS/${year}/${month}/00001`;
+  }
 };
 
 export default function StepSpqs({ onPrev, onNext, initialData }) {
@@ -22,10 +24,10 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
     date: "",
     part_description: "",
     supplier: "",
-    image1: "",
-    image2: "",
+    photo1_url: "",
+    photo2_url: "",
     criteria: {
-      dimension: "",
+      package_dimension: "",
       weight: "",
       material: "",
       finishing: "",
@@ -48,30 +50,43 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
   };
 
   const [data, setData] = useState({ ...defaultData, ...initialData });
-
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const loadedRef = useRef(false);
 
-  // 🔹 Load full_name user yang login
+  // 🔹 Load user info
   useEffect(() => {
-    const fetchUserName = async () => {
+    const fetchUser = async () => {
       try {
         const userId = localStorage.getItem("user_id");
         if (!userId) return;
-
-        // Ambil info user dari backend
         const res = await api.get(`/auth/user/${userId}`);
-        const fullName = res.data?.fullname || "";
-
-        setData((prev) => ({ ...prev, created_by: fullName }));
+        setData((prev) => ({
+          ...prev,
+          created_by: res.data?.fullname || prev.created_by,
+        }));
       } catch (err) {
-        console.error("Failed to fetch user name:", err);
+        console.error("Failed to load user:", err);
       }
     };
-
-    fetchUserName();
+    fetchUser();
   }, []);
 
-  // 🔹 Load data SPIS untuk isi otomatis Quality Criteria
+  useEffect(() => {
+    if (!initialData || Object.keys(initialData).length === 0) return;
+    setData((prev) => ({
+      ...prev,
+      criteria: {
+        ...prev.criteria,
+        package_dimension: initialData.inspection?.package_dimension || prev.criteria.package_dimension,
+        weight: initialData.inspection?.weight || prev.criteria.weight,
+        material: Array.isArray(initialData.part_material) ? initialData.part_material.join(", ") : prev.criteria.material,
+        finishing: initialData.inspection?.visual_condition || prev.criteria.finishing,
+        function: initialData.inspection?.part_system || prev.criteria.function,
+        completeness: initialData.inspection?.completeness || prev.criteria.completeness,
+      },
+    }));
+  }, [initialData]);
+
   useEffect(() => {
     const loadSpisData = async () => {
       const spisId = localStorage.getItem("spis_id");
@@ -80,40 +95,44 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
       try {
         const res = await api.get(`/spis/${spisId}`);
         const spisData = res.data;
-        console.log("✅ Loaded SPIS data:", spisData);
   
-        if (spisData) {
-          setData((prev) => ({
-            ...prev,
-            part_number: spisData.part_number || "",
-            part_description: spisData.part_description || "",
-            supplier: spisData.supplier || "",
-            photo1_url: spisData.photo1_url || "",
-            photo2_url: spisData.photo2_url || "",
-            criteria: {
-              ...prev.criteria,
-              // Isi otomatis dari SPIS
-              package_dimension:
-                spisData.inspection?.package_dimension ||
-                `${spisData.inspection?.length || 0}x${spisData.inspection?.width || 0}x${spisData.inspection?.height || 0} mm`,
-              weight: spisData.inspection?.weight || "",
-              material: Array.isArray(spisData.part_material)
-                ? spisData.part_material.join(", ")
-                : spisData.part_material || "",
-              finishing: spisData.inspection?.visual_condition || "",
-              function: spisData.inspection?.part_system || "",
-              completeness: spisData.inspection?.completeness || "",
-            },
-          }));
-        }
+        const inspection = typeof spisData.inspection === "string"
+          ? JSON.parse(spisData.inspection)
+          : spisData.inspection || {};
+  
+        const materials = typeof spisData.part_material === "string"
+          ? JSON.parse(spisData.part_material)
+          : spisData.part_material || [];
+  
+        setData((prev) => ({
+          ...prev,
+          part_number: spisData.part_number || "",
+          part_description: spisData.part_description || "",
+          supplier: spisData.supplier || "",
+          photo1_url: spisData.photo1_url || "",
+          photo2_url: spisData.photo2_url || "",
+          criteria: {
+            ...prev.criteria,
+            package_dimension:
+              inspection.package_dimension ||
+              `${inspection.length || 0} x ${inspection.width || 0} x ${inspection.height || 0}`,
+            weight: inspection.weight || "",
+            material: Array.isArray(materials)
+              ? materials.join(", ")
+              : materials || "",
+            finishing: inspection.visual_condition || "",
+            function: inspection.part_system || "",
+            completeness: inspection.completeness || "",
+          },
+        }));
       } catch (err) {
-        console.error("❌ Failed to load SPIS data:", err);
+        console.warn("⚠️ SPIS data gagal dimuat, gunakan initialData:", err);
       }
     };
-  
     loadSpisData();
   }, []);
 
+  // 🔹 Generate / load doc number
   useEffect(() => {
     const initDocNo = async () => {
       const savedDocNo = localStorage.getItem("spqs_doc_no");
@@ -121,25 +140,31 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         setData((prev) => ({ ...prev, doc_no: savedDocNo }));
         return;
       }
-  
+
       const newDocNo = await generateDocNo();
       setData((prev) => ({ ...prev, doc_no: newDocNo }));
       localStorage.setItem("spqs_doc_no", newDocNo);
     };
-  
+
     initDocNo();
   }, []);
 
-
-  // 🔹 Load draft SPQS (jika ada)
+  // 🔹 Load draft (jika ada)
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
     if (userId && !loadedRef.current) {
       loadedRef.current = true;
       api.get(`/spqs/draft/${userId}`).then((res) => {
         if (res.data) {
-          setData(res.data);
-          toast.info("Loaded SPQS draft.");
+          setData((prev) => ({
+            ...prev,
+            ...res.data,
+            criteria: {
+              ...prev.criteria,
+              ...(res.data.criteria || {}),
+            },
+          }));
+          toast.info("SPQS draft loaded.");
         }
       });
     }
@@ -150,20 +175,26 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
 
     if (name.includes("surface.")) {
       const key = name.split(".")[1];
-      setData({
-        ...data,
+      setData((prev) => ({
+        ...prev,
         criteria: {
-          ...data.criteria,
-          surface: { ...data.criteria.surface, [key]: checked },
+          ...prev.criteria,
+          surface: {
+            ...prev.criteria.surface,
+            [key]: checked,
+          },
         },
-      });
+      }));
     } else if (name in data.criteria) {
-      setData({
-        ...data,
-        criteria: { ...data.criteria, [name]: value },
-      });
+      setData((prev) => ({
+        ...prev,
+        criteria: { ...prev.criteria, [name]: value },
+      }));
     } else {
-      setData({ ...data, [name]: type === "checkbox" ? checked : value });
+      setData((prev) => ({
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      }));
     }
   };
 
@@ -175,86 +206,47 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         return;
       }
 
-      await api.post("/spqs/save-draft", {
-        user_id: userId,
-        data,
-      });
+      await api.post("/spqs/save-draft", { user_id: userId, data });
       toast.success("SPQS draft saved successfully!");
     } catch (err) {
       console.error(err);
       toast.error("Failed to save draft");
     }
   };
-
-  // const handleSubmit = async () => {
-  //   try {
-  //     const userId = localStorage.getItem("user_id");
-  //     const spisId = localStorage.getItem("spis_id"); 
   
-  //     if (!userId) {
-  //       toast.error("Please login first.");
-  //       return;
-  //     }
-  
-  //     if (!spisId) {
-  //       toast.error("SPIS ID tidak ditemukan. Silakan isi SPIS terlebih dahulu.");
-  //       return;
-  //     }
-  
-  //     const payload = {
-  //       ...data,
-  //       user_id: userId,
-  //       spis_id: spisId, // 🔹 Tambahkan ini
-  //     };
-  
-  //     await api.post("/spqs", payload);
-  //     toast.success("SPQS submitted successfully!");
-  //     onNext && onNext(data);
-  
-  //     // Bersihkan doc_no dari localStorage
-  //     localStorage.removeItem("spis_doc_no");
-  //     localStorage.removeItem("spps_doc_no");
-  //     localStorage.removeItem("spqs_doc_no");
-  //     localStorage.removeItem("user_id");
-  //     localStorage.removeItem("spis_id");
-  //     localStorage.removeItem("spps_form_data");
-  //     localStorage.removeItem("spqs_form_data");
-  //     localStorage.removeItem("spis_form_data");
-  //     localStorage.removeItem("spps_id");
-  //     localStorage.removeItem("spqs_id");
-  //     localStorage.removeItem("persist:root");
-  //   } catch (err) {
-  //     console.error("❌ Submit error:", err);
-  //     toast.error("Failed to submit SPQS");
-  //   }
-  // };
   const handleSubmit = async () => {
     try {
       const userId = localStorage.getItem("user_id");
-      const spisId = localStorage.getItem("spis_id"); 
+      const spisId = localStorage.getItem("spis_id");
   
-      if (!userId) {
-        toast.error("Please login first.");
-        return;
-      }
+      if (!userId) return toast.error("Please login first.");
+      if (!spisId) return toast.error("SPIS ID tidak ditemukan. Silakan isi SPIS dulu.");
   
-      if (!spisId) {
-        toast.error("SPIS ID tidak ditemukan. Silakan isi SPIS terlebih dahulu.");
-        return;
-      }
-  
-      const payload = {
-        ...data,
+      // --- Pilih field yang akan dikirim, hindari event/DOM
+      const safePayload = {
         user_id: userId,
         spis_id: spisId,
+        doc_no: data.doc_no,
+        part_number: data.part_number,
+        date: data.date,
+        part_description: data.part_description,
+        supplier: data.supplier,
+        criteria: data.criteria,
+        result: data.result,
+        comment: data.comment,
+        created_by: data.created_by,
+        approved_by: data.approved_by,
+        checked_by: data.checked_by,
+        photo1_url: data.photo1_url,
+        photo2_url: data.photo2_url,
       };
   
-      // ⏳ Kirim data ke backend
-      await api.post("/spqs", payload);
+      await api.post("/spqs", safePayload);
   
-      toast.success("✅ SPQS submitted successfully!");
+      toast.success("SPQS submitted successfully!");
+      clearDocuments();
   
-      // 🧹 1️⃣ Hapus semua localStorage form agar benar-benar fresh
+      // Hapus storage lama
       [
         "spis_doc_no",
         "spps_doc_no",
@@ -265,51 +257,13 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         "spis_id",
         "spps_id",
         "spqs_id",
-      ].forEach((key) => localStorage.removeItem(key));
+      ].forEach((k) => localStorage.removeItem(k));
   
-      // 🧠 2️⃣ Reset data form agar kosong
-      setData({
-        doc_no: "",
-        part_number: "",
-        date: "",
-        part_description: "",
-        supplier: "",
-        image1: "",
-        image2: "",
-        criteria: {
-          dimension: "",
-          weight: "",
-          material: "",
-          finishing: "",
-          function: "",
-          completeness: "",
-          surface: {
-            wear: false,
-            damage: false,
-            scratch: false,
-            crack: false,
-            corrosion: false,
-            bend: false,
-          },
-        },
-        result: "Pass",
-        comment: "",
-        created_by: "",
-        approved_by: "",
-        checked_by: "",
-      });
-  
-      // ⏳ 3️⃣ Tunggu sebentar biar state & localStorage sinkron
-      await new Promise((r) => setTimeout(r, 200));
-  
-      // 🔁 4️⃣ Panggil parent (Step Container) untuk balik ke Step 1 (SPIS)
-      if (onPrev) onPrev(true);
-  
-      // 🆕 5️⃣ Setelah balik, trigger auto-generate doc_no baru untuk SPIS
-      // (Pastikan di komponen StepSpis.jsx kamu ada useEffect yang generateDocNo saat mount)
+      setData(defaultData);
+      setShowSuccessModal(true);
       localStorage.setItem("trigger_new_spis_doc", "1");
     } catch (err) {
-      console.error("❌ Submit error:", err);
+      console.error("Submit error:", err);
       toast.error("Failed to submit SPQS");
     }
   };
@@ -328,129 +282,102 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
           <div key={f.name}>
             <label className="block text-sm mb-1">{f.label}</label>
             <input
-                type={f.type}
-                name={f.name}
-                value={data[f.name]}
-                onChange={handleChange}
-                className={`border p-2 w-full rounded ${
-                    f.readOnly ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""
-                }`}
+              type={f.type}
+              name={f.name}
+              value={data[f.name]}
+              onChange={handleChange}
+              className={`border p-2 w-full rounded ${
+                f.readOnly ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""
+              }`}
             />
           </div>
         ))}
       </div>
 
-      {/* Foto diambil dari SPIS (photo1 & photo2) */}
+      {/* Foto dari SPIS */}
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Foto dari SPIS</h3>
-        <div className="border p-3 rounded mb-4 flex justify-between gap-3">
-          {/* Foto 1 */}
-          <div className="flex-1">
-            <p className="mb-2 text-sm">Foto 1</p>
-            <div className="w-full h-40 border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden flex items-center justify-center">
-              {data.photo1_url ? (
-                <img
-                  src={data.photo1_url}
-                  alt="Part Image 1"
-                  className="w-full h-full object-contain rounded-md"
-                />
-              ) : (
-                <span className="text-gray-400 text-sm">No Image</span>
-              )}
+        <div className="flex gap-4">
+          {[data.photo1_url, data.photo2_url].map((url, i) => (
+            <div key={i} className="flex-1 border p-3 rounded">
+              <p className="mb-2 text-sm">Foto {i + 1}</p>
+              <div className="w-full h-40 border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden flex items-center justify-center">
+                {url ? (
+                  <img
+                    src={url}
+                    alt={`Part ${i + 1}`}
+                    className="w-full h-full object-contain rounded-md"
+                  />
+                ) : (
+                  <span className="text-gray-400 text-sm">No Image</span>
+                )}
+              </div>
             </div>
-          </div>
-
-          {/* Foto 2 */}
-          <div className="flex-1">
-            <p className="mb-2 text-sm">Foto 2</p>
-            <div className="w-full h-40 border border-dashed border-gray-300 rounded-md bg-gray-50 overflow-hidden flex items-center justify-center">
-              {data.photo2_url ? (
-                <img
-                  src={data.photo2_url}
-                  alt="Part Image 2"
-                  className="w-full h-full object-contain rounded-md"
-                />
-              ) : (
-                <span className="text-gray-400 text-sm">No Image</span>
-              )}
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
       {/* Quality Criteria */}
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Quality Criteria</h3>
-
         <div className="grid grid-cols-2 gap-4">
-          {[
-            "package_dimension",
-            "weight",
-            "material",
-            "finishing",
-            "function",
-            "completeness",
-          ].map((crit) => (
-            <div key={crit} className="border p-3 rounded">
-              <label className="block text-sm font-semibold mb-1 capitalize">
-                {crit}
-              </label>
-
-              <div className="flex items-center gap-2 mb-2">
+          {["package_dimension", "weight", "material", "finishing", "function", "completeness"].map(
+            (crit) => (
+              <div key={crit} className="border p-3 rounded">
+                <label className="block text-sm font-semibold mb-1 capitalize">{crit}</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="checkbox"
+                    name={`${crit}_ok`}
+                    checked={data.criteria[`${crit}_ok`] || false}
+                    onChange={(e) =>
+                      setData((prev) => ({
+                        ...prev,
+                        criteria: {
+                          ...prev.criteria,
+                          [`${crit}_ok`]: e.target.checked,
+                        },
+                      }))
+                    }
+                  />
+                  <span className="text-sm text-gray-700">Sesuai spesifikasi</span>
+                </div>
                 <input
-                  type="checkbox"
-                  name={`${crit}_ok`}
-                  checked={data.criteria[`${crit}_ok`] || false}
+                  type="text"
+                  name={crit}
+                  value={data.criteria[crit]}
+                  onChange={handleChange}
+                  readOnly
+                  className="border p-2 w-full rounded mb-2 bg-gray-100 text-gray-700"
+                />
+                <input
+                  type="text"
+                  name={`${crit}_remark`}
+                  value={data.criteria[`${crit}_remark`] || ""}
                   onChange={(e) =>
                     setData((prev) => ({
                       ...prev,
                       criteria: {
                         ...prev.criteria,
-                        [`${crit}_ok`]: e.target.checked,
+                        [`${crit}_remark`]: e.target.value,
                       },
                     }))
                   }
+                  className="border p-2 w-full rounded"
+                  placeholder="Keterangan (jika tidak sesuai)"
                 />
-                <span className="text-sm text-gray-700">Sesuai spesifikasi</span>
               </div>
-
-              <input
-                type="text"
-                name={crit}
-                value={data.criteria[crit]}
-                onChange={handleChange}
-                className="border p-2 w-full rounded mb-2"
-                placeholder={`Nilai dari SPIS (${crit})`}
-                readOnly
-              />
-
-              <input
-                type="text"
-                name={`${crit}_remark`}
-                value={data.criteria[`${crit}_remark`] || ""}
-                onChange={(e) =>
-                  setData((prev) => ({
-                    ...prev,
-                    criteria: {
-                      ...prev.criteria,
-                      [`${crit}_remark`]: e.target.value,
-                    },
-                  }))
-                }
-                className="border p-2 w-full rounded"
-                placeholder="Keterangan (jika tidak sesuai)"
-              />
-            </div>
-          ))}
+            )
+          )}
         </div>
       </div>
 
       {/* Surface Condition */}
       <div className="mt-6">
-        <h3 className="font-semibold mb-2">Kondisi Part</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <h3 className="font-semibold mb-2">Kondisi Permukaan</h3>
+        <div className="grid grid-cols-3 gap-3">
           {Object.keys(data.criteria.surface).map((key) => (
-            <label key={key} className="flex items-center space-x-2">
+            <label key={key} className="flex items-center gap-2">
               <input
                 type="checkbox"
                 name={`surface.${key}`}
@@ -494,40 +421,6 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         ></textarea>
       </div>
 
-      {/* Signature */}
-      <div className="mt-6 grid grid-cols-3 gap-4 hidden">
-        <div>
-          <label className="block text-sm mb-1">Created By</label>
-          <input
-            type="text"
-            name="created_by"
-            value={data.created_by}
-            readOnly
-            className="border p-2 w-full rounded bg-gray-100 text-gray-600 cursor-not-allowed"
-          />
-        </div>
-        <div>
-          <label className="block text-sm mb-1">Approved By</label>
-          <input
-            type="text"
-            name="approved_by"
-            value={data.approved_by}
-            onChange={handleChange}
-            className="border p-2 w-full rounded"
-          />
-        </div>
-        <div>
-          <label className="block text-sm mb-1">Checked By</label>
-          <input
-            type="text"
-            name="checked_by"
-            value={data.checked_by}
-            onChange={handleChange}
-            className="border p-2 w-full rounded"
-          />
-        </div>
-      </div>
-
       {/* Buttons */}
       <div className="flex justify-between mt-6 border-t pt-6">
         <button
@@ -551,6 +444,38 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
           </button>
         </div>
       </div>
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-[400px] text-center">
+            <h2 className="text-xl font-semibold mb-3 text-green-600">Berhasil!</h2>
+            <p className="text-gray-700 mb-6">
+              Data SPIS, SPQS, SPQS kamu telah berhasil disimpan ke sistem.
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => {
+                  setData(defaultData);           
+                  setShowSuccessModal(false);    
+                  if (onNext) onNext("restart");  
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
+              >
+                <FaPlus /> Buat Data Baru
+              </button>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  window.location.href = "/sparepart-list"; 
+                }}
+                className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+              >
+                Lihat Daftar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
