@@ -126,6 +126,25 @@ export default function DocumentCreate() {
         }
     }, []);
 
+    useEffect(() => {
+            const userId = localStorage.getItem("user_id");
+        if (userId) {
+        fetchLatestDraft(userId);
+        }
+    }, []);
+    
+    const fetchLatestDraft = async (userId) => {
+        try {
+        const res = await api.get(`/spis/latest/${userId}`);
+        if (res.data) {
+            setFormData(res.data);
+            toast.info("Draft sebelumnya berhasil dimuat");
+        }
+        } catch (err) {
+        console.error("Error loading draft:", err);
+        }
+    };
+
     return (
         <DashboardLayout>
         {/* === STEP INDICATOR === */}

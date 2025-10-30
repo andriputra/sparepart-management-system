@@ -239,4 +239,22 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.get("/latest/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+  try {
+    // Ambil dokumen dengan status draft terakhir
+    const [rows] = await db.query(
+      "SELECT * FROM spqs WHERE user_id = ? AND status = 'draft' ORDER BY updated_at DESC LIMIT 1",
+      [user_id]
+    );
+    if (rows.length === 0) {
+      return res.json(null);
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Error fetching latest draft:", err);
+    res.status(500).json({ error: "Failed to fetch draft" });
+  }
+});
+
 export default router;

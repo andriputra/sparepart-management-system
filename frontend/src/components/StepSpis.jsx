@@ -468,12 +468,7 @@ export default function StepSpis({ onNext, initialData }) {
         part_images: serializeImages(data.part_images),
       };
       delete draftData.photo; 
-      await api.post(
-        "/spis/save-draft",
-        {
-          user_id: userId,
-          data: draftData,
-        },
+      await api.post("/spis/save-draft",{ user_id: userId, data: draftData,},
         {
           headers: { Authorization: `Bearer ${token}` },
         }

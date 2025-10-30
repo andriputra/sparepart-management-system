@@ -116,7 +116,7 @@ router.post( "/", upload.fields([
       if (!user_id) {
         return res.status(400).json({ error: "Missing user_id" });
       }
-      
+
       const sanitizePhotoUrl = (url) => {
         if (!url || typeof url !== "string") return null;
         if (url.startsWith("blob:")) return null;
@@ -353,4 +353,23 @@ router.get("/all", async (req, res) => {
       res.status(500).json({ error: "Failed to combine SPIS list" });
     }
 });
+
+router.get("/latest/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+  try {
+    // Ambil dokumen dengan status draft terakhir
+    const [rows] = await db.query(
+      "SELECT * FROM spis WHERE user_id = ? AND status = 'draft' ORDER BY updated_at DESC LIMIT 1",
+      [user_id]
+    );
+    if (rows.length === 0) {
+      return res.json(null);
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Error fetching latest draft:", err);
+    res.status(500).json({ error: "Failed to fetch draft" });
+  }
+});
+
 export default router;
