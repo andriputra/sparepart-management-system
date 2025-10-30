@@ -137,7 +137,7 @@ router.get("/spis", async (req, res) => {
         u2.signature_url AS approved_signature_url
       FROM spis s
       LEFT JOIN users u1 ON u1.id = s.user_id         
-      LEFT JOIN users u2 ON u2.name = s.approved_by    
+      LEFT JOIN users u2 ON u2.fullname = s.approved_by    
       WHERE s.doc_no = ?
     `, [doc_no]);
 
@@ -166,7 +166,7 @@ router.get("/spps", async (req, res) => {
         u2.signature_url AS approved_signature_url
       FROM spps s
       LEFT JOIN users u1 ON u1.id = s.user_id         
-      LEFT JOIN users u2 ON u2.name = s.approved_by    
+      LEFT JOIN users u2 ON u2.fullname = s.approved_by    
       WHERE s.doc_no = ?
     `, [doc_no]);
 
@@ -219,7 +219,7 @@ router.get("/spqs", async (req, res) => {
         u2.signature_url AS approved_signature_url
       FROM spqs s
       LEFT JOIN users u1 ON u1.id = s.user_id         
-      LEFT JOIN users u2 ON u2.name = s.approved_by    
+      LEFT JOIN users u2 ON u2.fullname = s.approved_by    
       WHERE s.doc_no = ?
     `, [doc_no]);
 
@@ -231,6 +231,35 @@ router.get("/spqs", async (req, res) => {
   } catch (err) {
     console.error("Error fetching SPQS:", err);
     res.status(500).json({ error: "Failed to fetch SPPS" });
+  }
+});
+
+
+router.get("/drafts/all/:user_id", async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    const [rows] = await db.query(`
+      SELECT 
+        s.id AS spis_id,
+        s.doc_no AS spis_doc_no,
+        s.status AS spis_status,
+        COALESCE(p.doc_no, '') AS spps_doc_no,
+        COALESCE(p.status, 'draft') AS spps_status,
+        COALESCE(q.doc_no, '') AS spqs_doc_no,
+        COALESCE(q.status, 'draft') AS spqs_status,
+        s.updated_at
+      FROM spis s
+      LEFT JOIN spps p ON p.spis_id = s.id
+      LEFT JOIN spqs q ON q.spis_id = s.id
+      WHERE s.user_id = ? AND (s.status = 'draft' OR p.status = 'draft' OR q.status = 'draft')
+      ORDER BY s.updated_at DESC
+    `, [user_id]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching drafts:", err);
+    res.status(500).json({ error: "Failed to fetch draft documents" });
   }
 });
 export default router;

@@ -94,6 +94,42 @@ export default function DocumentCreate() {
         { id: 3, label: "SPQS - Spare Part Quality Sheet" },
     ];
 
+    // === Ambil data draft dari backend berdasarkan doc_no ===
+    const fetchExistingDraft = async (docNo) => {
+        try {
+        const response = await fetch(`http://127.0.0.1:5050/api/spareparts/get_draft/${encodeURIComponent(docNo)}`);
+        if (!response.ok) {
+            throw new Error("Gagal mengambil data draft");
+        }
+    
+        const data = await response.json();
+        setFormData({
+            spis: data.spis || {},
+            spps: data.spps || {},
+            spqs: data.spqs || {},
+        });
+    
+        toast.info(`Draft ${docNo} berhasil dimuat.`);
+        } catch (error) {
+        console.error("Error fetching draft:", error);
+        toast.error("Gagal memuat data draft.");
+        }
+    };
+    
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const docNo = params.get("doc_no");
+        const storedDocNo =
+            docNo ||
+            localStorage.getItem("spps_doc_no") ||
+            localStorage.getItem("spqs_doc_no") ||
+            localStorage.getItem("spis_doc_no");
+      
+        if (storedDocNo) {
+            fetchExistingDraft(storedDocNo);
+        }
+    }, []);
+
     return (
         <DashboardLayout>
         {/* === STEP INDICATOR === */}

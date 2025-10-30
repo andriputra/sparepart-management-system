@@ -59,14 +59,28 @@ export default function SparepartList() {
 
     console.log("Filtered Data:", currentItems);
 
+    // const handleContinue = (docNo, nextStep) => {
+    //     localStorage.setItem("spis_doc_no", docNo);
+    //     if (nextStep === "spps") {
+    //     window.location.href = `/document-create?step=2`;
+    //     } else if (nextStep === "spqs") {
+    //     window.location.href = `/document-create?step=3`;
+    //     }
+    // };
     const handleContinue = (docNo, nextStep) => {
-        localStorage.setItem("spis_doc_no", docNo);
-        if (nextStep === "spps") {
-        window.location.href = `/document-create?step=2`;
-        } else if (nextStep === "spqs") {
-        window.location.href = `/document-create?step=3`;
+        if (!docNo) {
+          toast.error("Tidak ada dokumen draft untuk dilanjutkan!");
+          return;
         }
-    };
+      
+        if (nextStep === "spps") {
+          localStorage.setItem("spps_doc_no", docNo);
+          window.location.href = `/document-create?step=2&doc_no=${encodeURIComponent(docNo)}`;
+        } else if (nextStep === "spqs") {
+          localStorage.setItem("spqs_doc_no", docNo);
+          window.location.href = `/document-create?step=3&doc_no=${encodeURIComponent(docNo)}`;
+        }
+      };
 
     const getStatusBadge = (status) => {
         switch (status) {
@@ -279,12 +293,12 @@ export default function SparepartList() {
                                                 if (isAnySubmitted && !isAllSubmitted) {
                                                     return (
                                                     <>
-                                                        {item.spps_status === "draft" && item.spis_status === "submitted" && (
+                                                        {/* {item.spps_status === "draft" && item.spis_status === "submitted" && (
                                                         <button
                                                             onClick={() => handleContinue(item.doc_no, "spps")}
-                                                            disabled={role === "viewer"}
+                                                            disabled={role === "viewer" || role === "approval"}
                                                             className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                role === "viewer"
+                                                                role === "viewer" || role === "approval"
                                                                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                                                 : "bg-green-600 hover:bg-green-700 text-white"
                                                             }`}
@@ -295,18 +309,48 @@ export default function SparepartList() {
                                                         )}
 
                                                         {item.spqs_status === "draft" && item.spps_status === "submitted" && (
-                                                        <button
-                                                            onClick={() => handleContinue(item.doc_no, "spqs")}
-                                                            className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                role === "viewer"
-                                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                : "bg-green-600 hover:bg-green-700 text-white"
-                                                            }`}
-                                                            title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lihat Dokumen"}
-                                                            >
-                                                            <FaArrowRight /> Lanjut SPQS
-                                                        </button>
-                                                        )}
+                                                            <button
+                                                                onClick={() => handleContinue(item.doc_no, "spqs")}
+                                                                disabled={role === "viewer" || role === "approval"}
+                                                                className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                                    role === "viewer" || role === "approval"
+                                                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                    : "bg-green-600 hover:bg-green-700 text-white"
+                                                                }`}
+                                                                title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lihat Dokumen"}
+                                                                >
+                                                                <FaArrowRight /> Lanjut SPQS
+                                                            </button>
+                                                        )} */}
+                                                        {item.spps_status === "draft" && item.spis_status === "submitted" && (
+  <button
+    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps")}
+    disabled={role === "viewer" || role === "approval"}
+    className={`px-3 py-1 rounded flex items-center gap-1 ${
+      role === "viewer" || role === "approval"
+        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+        : "bg-green-600 hover:bg-green-700 text-white"
+    }`}
+    title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPPS"}
+  >
+    <FaArrowRight /> Lanjut SPPS
+  </button>
+)}
+
+{item.spqs_status === "draft" && item.spps_status === "submitted" && (
+  <button
+    onClick={() => handleContinue(item.spqs_doc_no || item.spps_doc_no, "spqs")}
+    disabled={role === "viewer" || role === "approval"}
+    className={`px-3 py-1 rounded flex items-center gap-1 ${
+      role === "viewer" || role === "approval"
+        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+        : "bg-green-600 hover:bg-green-700 text-white"
+    }`}
+    title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPQS"}
+  >
+    <FaArrowRight /> Lanjut SPQS
+  </button>
+)}
                                                     </>
                                                     );
                                                 }
@@ -391,16 +435,18 @@ export default function SparepartList() {
                                             </div>
                                         </td>
                                         <td className="px-3 py-2 border text-center">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedDocNo(item.spis_doc_no);
-                                                    setShowConfirm(true);
-                                                }}
-                                                className="text-red-600 hover:text-red-800 flex items-center justify-center w-full h-full"
-                                                title="Hapus Dokumen"
+                                            {(role !== "viewer" && role !== "approval") && (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedDocNo(item.spis_doc_no);
+                                                        setShowConfirm(true);
+                                                    }}
+                                                    className="text-red-600 hover:text-red-800 flex items-center justify-center w-full h-full"
+                                                    title="Hapus Dokumen"
                                                 >
-                                                <FaTrashAlt />
-                                            </button>
+                                                    <FaTrashAlt />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                     );
@@ -411,15 +457,15 @@ export default function SparepartList() {
                         {filteredData.length > itemsPerPage && (
                             <div className="flex justify-end items-center gap-2 mt-6 pb-6 pr-6">
                                 <button
-                                disabled={currentPage === 1}
-                                onClick={() => setCurrentPage(currentPage - 1)}
-                                className={`px-3 py-2 rounded border ${
-                                    currentPage === 1
-                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                    : "bg-white hover:bg-gray-50 text-gray-700"
-                                }`}
-                                >
-                                <FaAngleDoubleLeft/>
+                                    disabled={currentPage === 1}
+                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                    className={`px-3 py-2 rounded border ${
+                                        currentPage === 1
+                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                        : "bg-white hover:bg-gray-50 text-gray-700"
+                                    }`}
+                                    >
+                                    <FaAngleDoubleLeft/>
                                 </button>
 
                                 {Array.from({ length: totalPages }, (_, i) => (
@@ -437,15 +483,15 @@ export default function SparepartList() {
                                 ))}
 
                                 <button
-                                disabled={currentPage === totalPages}
-                                onClick={() => setCurrentPage(currentPage + 1)}
-                                className={`px-3 py-2 rounded border ${
-                                    currentPage === totalPages
-                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                    : "bg-white hover:bg-gray-50 text-gray-700"
-                                }`}
-                                >
-                                <FaAngleDoubleRight/>
+                                    disabled={currentPage === totalPages}
+                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                    className={`px-3 py-2 rounded border ${
+                                        currentPage === totalPages
+                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                        : "bg-white hover:bg-gray-50 text-gray-700"
+                                    }`}
+                                    >
+                                    <FaAngleDoubleRight/>
                                 </button>
                             </div>
                         )}
