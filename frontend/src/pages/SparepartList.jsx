@@ -12,11 +12,11 @@ export default function SparepartList() {
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 15;
-    const navigate = useNavigate();
     const [showConfirm, setShowConfirm] = useState(false);
     const [selectedDocNo, setSelectedDocNo] = useState(null);
     const [showApproveConfirm, setShowApproveConfirm] = useState(false);
     const [selectedApproveDocNo, setSelectedApproveDocNo] = useState(null);
+    const serverUrl = import.meta.env.VITE_SERVER_URL;
     
     useEffect(() => {
         fetchSpareparts();
@@ -25,8 +25,9 @@ export default function SparepartList() {
     const fetchSpareparts = async () => {
         try {
             const res = await api.get("/spareparts/with-documents");
-            setSpareparts(res.data);
-            setFilteredData(res.data);
+            const sorted = res.data.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+            setSpareparts(sorted);
+            setFilteredData(sorted);
         } catch (err) {
             console.error("Error fetching data:", err);
             toast.error("Gagal memuat data sparepart!");
@@ -91,19 +92,20 @@ export default function SparepartList() {
     }
 
     const handleDelete = async () => {
+        console.log("Delete clicked, selectedDocNo =", selectedDocNo);
         if (!selectedDocNo) return;
-      
+    
         try {
-          toast.info("Menghapus dokumen...");
-          await api.delete(`/spareparts/${encodeURIComponent(selectedDocNo)}`);
-          toast.success(`Dokumen ${selectedDocNo} berhasil dihapus.`);
-          fetchSpareparts();
+            toast.info("Menghapus dokumen...");
+            await api.delete(`/spareparts/${encodeURIComponent(selectedDocNo)}`);
+            toast.success(`Dokumen ${selectedDocNo} berhasil dihapus.`);
+            fetchSpareparts();
         } catch (err) {
-          console.error("Error deleting document:", err);
-          toast.error("Gagal menghapus dokumen!");
+            console.error("Error deleting document:", err);
+            toast.error("Gagal menghapus dokumen!");
         } finally {
-          setShowConfirm(false);
-          setSelectedDocNo(null);
+            setShowConfirm(false);
+            setSelectedDocNo(null);
         }
     };
 
@@ -114,7 +116,9 @@ export default function SparepartList() {
     
     // 🔹 Fungsi untuk mengeksekusi approval (setelah konfirmasi)
     const handleApprove = async () => {
-    if (!selectedApproveDocNo) return;
+        console.log("Approved, selectedDocNo =", selectedApproveDocNo);
+        if (!selectedApproveDocNo) return;
+    
         try {
             toast.info("Menyetujui dokumen...");
             await api.put(`/spareparts/approve/${encodeURIComponent(selectedApproveDocNo)}`, {
@@ -165,7 +169,7 @@ export default function SparepartList() {
                             <thead className="bg-gray-100 text-gray-700 sticky top-0 z-10 text-sm">
                                 <tr>
                                     <th className="px-3 py-3 border">No</th>
-                                    <th className="px-3 py-3 border text-left">Doc Number</th>
+                                    {/* <th className="px-3 py-3 border text-center">Part Image</th> */}
                                     <th className="px-3 py-3 border text-left">Part Number</th>
                                     <th className="px-3 py-3 border text-left">Created by</th>
                                     <th className="px-3 py-3 border text-left">Approved by</th>
@@ -173,7 +177,7 @@ export default function SparepartList() {
                                     <th className="px-3 py-3 border text-center">SPPS</th>
                                     <th className="px-3 py-3 border text-center">SPQS</th>
                                     {/* <th className="px-3 py-3 border text-center">Created at</th> */}
-                                    <th colSpan={2} className="px-3 py-3 border text-center w-[20%]">Aksi</th>
+                                    <th colSpan={2} className="px-3 py-3 border text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="text-[14px]">
@@ -193,53 +197,57 @@ export default function SparepartList() {
 
                                     return (
                                     <tr
-                                        key={item.doc_no}
+                                        key={item.spis_doc_no}
                                         className={`hover:bg-gray-50 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                                     >
                                         <td className="px-3 py-2 border text-center">{startIndex + index + 1}</td>
-                                        <td className="px-3 py-2 border">{item.doc_no}</td>
+                                        {/* <td className="px-3 py-2 border">
+                                            {item.photo1 ? (
+                                                <img
+                                                    src={`${serverUrl}${item.photo1}`}
+                                                    alt={item.part_number}
+                                                    className="w-16 h-16 object-cover rounded"
+                                                />
+                                            ) : (
+                                                <span className="text-gray-400">No Image</span>
+                                            )}
+                                        </td> */}
                                         <td className="px-3 py-2 border">{item.part_number}</td>
                                         <td className="px-3 py-2 border">{item.created_by}</td>
                                         <td className="px-3 py-2 border">{item.approved_by || "-"}</td>
 
-                                        {["spis_status", "spps_status", "spqs_status"].map((key) => (
-                                        <td key={key} className="px-3 py-2 border text-center">
-                                            <span
-                                            className={`px-2 py-1 rounded text-[10px] font-semibold ${getStatusBadge(
-                                                item[key]
-                                            )}`}
-                                            >
-                                            {item[key]?.toUpperCase() || "-"}
-                                            </span>
-                                        </td>
-                                        ))}
+                                        {["spis_status", "spps_status", "spqs_status"].map((key) => {
+                                            const status = item[key]?.toLowerCase();
+                                            const type = key.split("_")[0]; 
+                                            const docNo = item[`${type}_doc_no`]; 
+                                            const pdfUrl = `/document/view/${type.toUpperCase()}/${encodeURIComponent(docNo)}`;
 
-                                        {/* <td className="px-3 py-2 border text-center">
-                                            {new Date(item.updated_at).toLocaleDateString("id-ID", {
-                                                year: "numeric",
-                                                month: "2-digit",
-                                                day: "2-digit",
-                                            })}
-                                        </td> */}
+                                            return (
+                                                <td key={key} className="px-3 py-2 border text-center">
+                                                    {status === "submitted" || status === "completed" ? (
+                                                        <a
+                                                            href={pdfUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className={`px-2 py-1 rounded text-[10px] font-semibold ${getStatusBadge(status)} hover:underline`}
+                                                        >
+                                                            {status.toUpperCase()}
+                                                        </a>
+                                                    ) : (
+                                                        <span
+                                                            className={`px-2 py-1 rounded text-[10px] font-semibold ${getStatusBadge(status)}`}
+                                                        >
+                                                            {status?.toUpperCase() || "-"}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
 
                                         {/* === ACTION BUTTONS === */}
                                         <td className="px-3 py-2 border text-center">
                                             <div className="flex justify-center flex-wrap gap-2">
                                                 {(() => {
-                                                if (role === "approval" && !isAllSubmitted && !isAllCompleted) {
-                                                    return (
-                                                        <button
-                                                            // onClick={() => window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank")}
-                                                            onClick={() => {
-                                                                const docPath = item.document_type || "SPIS";
-                                                                window.open(`/document/view/${encodeURIComponent(docPath)}/${encodeURIComponent(item.doc_no)}`, "_blank");
-                                                            }}
-                                                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"
-                                                        >
-                                                            <FaEye />
-                                                        </button>
-                                                    );
-                                                }
 
                                                 // Semua draft → hanya SPIS aktif
                                                 if (isAllDraft) {
@@ -271,25 +279,6 @@ export default function SparepartList() {
                                                 if (isAnySubmitted && !isAllSubmitted) {
                                                     return (
                                                     <>
-                                                        <button
-                                                            onClick={() => {
-                                                                if (role !== "viewer") {
-                                                                // window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank");
-                                                                const docPath = item.document_type || "SPIS";
-                                                                window.open(`/document/view/${encodeURIComponent(docPath)}/${encodeURIComponent(item.doc_no)}`, "_blank");
-                                                                }
-                                                            }}
-                                                            disabled={role === "viewer"}
-                                                            className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                role === "viewer"
-                                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                : "bg-blue-500 hover:bg-blue-600 text-white"
-                                                            }`}
-                                                            title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lihat Dokumen"}
-                                                            >
-                                                            <FaEye />
-                                                        </button>
-
                                                         {item.spps_status === "draft" && item.spis_status === "submitted" && (
                                                         <button
                                                             onClick={() => handleContinue(item.doc_no, "spps")}
@@ -326,27 +315,13 @@ export default function SparepartList() {
                                                 if (isAllSubmitted) {
                                                     return (
                                                     <>
-                                                        <button
-                                                            // onClick={() => window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank")}
-                                                            onClick={() => {
-                                                                const docPath = item.document_type || "SPIS";
-                                                                window.open(`/document/view/${encodeURIComponent(docPath)}/${encodeURIComponent(item.doc_no)}`, "_blank");
-                                                            }}
-                                                            disabled={role === "viewer"}
-                                                            className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                role === "viewer"
-                                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                : "bg-blue-500 hover:bg-blue-600 text-white"
-                                                            }`}
-                                                            title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lihat Dokumen"}
-                                                            >
-                                                            <FaEye />
-                                                        </button>
+                                                        <div className="py-1 px-2 rounded bg-gray-200 text-gray-500">
+                                                            Ready For Approval
+                                                        </div>
 
                                                         {role === "approval" && (
                                                             <button
-                                                                // onClick={handleApprove}
-                                                                onClick={() => confirmApprove(item.doc_no)}
+                                                                onClick={() => confirmApprove(item.spis_doc_no)}
                                                                 className="bg-red-300 hover:bg-red-700 hover:text-white text-red-800 px-3 py-1 rounded flex items-center gap-1"
                                                             >
                                                                 <FaFilePdf /> Approve
@@ -361,16 +336,9 @@ export default function SparepartList() {
                                                     return (
                                                         <div className="flex flex-row items-center gap-2">
                                                             <div className="flex gap-2">
-                                                                <button
-                                                                    // onClick={() => window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank")}
-                                                                    onClick={() => {
-                                                                        const docPath = item.document_type || "SPIS";
-                                                                        window.open(`/document/view/${encodeURIComponent(docPath)}/${encodeURIComponent(item.doc_no)}`, "_blank");
-                                                                    }}
-                                                                    className="bg-red-500 hover:bg-red-600 text-sm text-white text-white px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                    <FaFilePdf /> Download PDF
-                                                                </button>
+                                                                <div className="bg-red-500 hover:bg-red-600 text-sm text-white text-white px-3 py-1 rounded flex items-center gap-1">
+                                                                    <FaFilePdf /> Document Approved
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     );
@@ -425,7 +393,7 @@ export default function SparepartList() {
                                         <td className="px-3 py-2 border text-center">
                                             <button
                                                 onClick={() => {
-                                                    setSelectedDocNo(item.doc_no);
+                                                    setSelectedDocNo(item.spis_doc_no);
                                                     setShowConfirm(true);
                                                 }}
                                                 className="text-red-600 hover:text-red-800 flex items-center justify-center w-full h-full"

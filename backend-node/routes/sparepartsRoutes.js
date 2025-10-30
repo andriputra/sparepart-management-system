@@ -29,28 +29,28 @@ router.get("/with-documents", async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT 
-        s.id AS spis_id,
-        s.doc_no,
-        s.part_number,
-        s.name AS created_by,
-        s.approved_by,
-        s.status AS spis_status,
-        COALESCE(MAX(p.status), 'draft') AS spps_status,
-        COALESCE(MAX(q.status), 'draft') AS spqs_status,
-        CASE
-          WHEN COALESCE(MAX(q.status), 'draft') != 'draft' THEN 'SPQS'
-          WHEN COALESCE(MAX(p.status), 'draft') != 'draft' THEN 'SPPS'
-          ELSE 'SPIS'
-        END AS document_type,
-        s.updated_at
+          s.id AS spis_id,
+          s.doc_no AS spis_doc_no,
+          COALESCE(MAX(p.doc_no), '') AS spps_doc_no,
+          COALESCE(MAX(q.doc_no), '') AS spqs_doc_no,
+          s.part_number,
+          s.photo1,
+          s.name AS created_by,
+          s.approved_by,
+          s.status AS spis_status,
+          COALESCE(MAX(p.status), 'draft') AS spps_status,
+          COALESCE(MAX(q.status), 'draft') AS spqs_status,
+          CASE
+              WHEN COALESCE(MAX(q.status), 'draft') != 'draft' THEN 'SPQS'
+              WHEN COALESCE(MAX(p.status), 'draft') != 'draft' THEN 'SPPS'
+              ELSE 'SPIS'
+          END AS document_type,
+          s.updated_at
       FROM spis s
       LEFT JOIN spps p ON p.spis_id = s.id
       LEFT JOIN spqs q ON q.spis_id = s.id
-      GROUP BY 
-        s.id, s.doc_no, s.name, s.approved_by, s.status, s.updated_at
-      ORDER BY s.updated_at DESC
-    `);
-
+      GROUP BY s.id, s.doc_no, s.name, s.approved_by, s.status, s.updated_at
+  `);
     res.json(rows);
   } catch (err) {
     console.error("Error fetching spareparts with documents:", err);
@@ -198,7 +198,7 @@ router.get("/spis/photo/:spis_id", async (req, res) => {
       photo1: spis.photo1 || null,
       photo2: spis.photo2 || null,
     });
-    
+
   } catch (err) {
     console.error("Error fetching SPIS photo:", err);
     res.status(500).json({ error: "Failed to fetch SPIS photo" });
