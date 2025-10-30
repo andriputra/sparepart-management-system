@@ -26,8 +26,8 @@ router.post("/", upload.any(), async (req, res) => {
     const allowedFields = [
       "doc_no", "date", "part_number", "supplier", "part_description", "qty",
       "part_weight", "part_dimension", "created_by", "approved_by",
-      "package_material", "package_code", "package_detail",
-      "spis_id", "user_id",
+      "package_material", "package_code", "package_detail", 
+      "spis_id", "user_id", "status",
       "package_0", "package_1", "package_2", "package_3",
       "package_illustration_0", "package_illustration_1", "result_illustration"
     ];
@@ -93,6 +93,7 @@ router.put("/:id", upload.any(), async (req, res) => {
 
     const allowedFields = [
       "qty",
+      "status",
       "package_material",
       "package_code",
       "package_detail",

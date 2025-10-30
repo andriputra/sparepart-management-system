@@ -125,7 +125,7 @@ export default function SpqsQuality({ data }) {
                     <tr className="text-center">
                         {["Lulus", "Ditolak", "Butuh Perbaikan"].map((label, idx) => {
                             const isChecked =
-                            (data.result === "Passed" && label === "Lulus") ||
+                            (data.result === "Pass" && label === "Lulus") ||
                             (data.result === "Rejected" && label === "Ditolak") ||
                             (data.result === "Need Improvement" && label === "Butuh Perbaikan");
 

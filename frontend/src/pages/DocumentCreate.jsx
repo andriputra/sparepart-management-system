@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useSelector, useDispatch } from "react-redux";
 import StepSpis from "../components/StepSpis";
 import StepSpps from "../components/StepSpps";
 import StepSpqs from "../components/StepSpqs";
@@ -18,9 +17,6 @@ export default function DocumentCreate() {
         if (targetStep >= 1 && targetStep <= 3) setStep(targetStep);
         }
     }, [searchParams]);
-
-    const dispatch = useDispatch();
-    const { form: spisForm } = useSelector((state) => state.spis);
 
     const [formData, setFormData] = useState({
         spis: {},
@@ -196,7 +192,6 @@ export default function DocumentCreate() {
             <StepSpps 
                 onNext={handleNext} 
                 onPrev={handlePrev}
-                // initialData={formData.spis} // ⚡ bawa data dari SPIS
                 initialData={{ ...formData.spis, ...formData.spps }}
             />
             )}
@@ -205,7 +200,7 @@ export default function DocumentCreate() {
             <StepSpqs 
                 onPrev={handlePrev} 
                 onNext={handleSubmit}
-                initialData={{ ...formData.spis, ...formData.spps }} // ⚡ gabungkan data SPIS & SPPS
+                initialData={{ ...formData.spis, ...formData.spps }}
             />
             )}
 

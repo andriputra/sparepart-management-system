@@ -85,9 +85,7 @@ router.get("/last-docno", async (req, res) => {
     }
 });
 
-router.post(
-  "/",
-  upload.fields([
+router.post( "/", upload.fields([
     { name: "photo1", maxCount: 1 },
     { name: "photo2", maxCount: 1 },
     { name: "part_images", maxCount: 8 },
@@ -118,15 +116,20 @@ router.post(
       if (!user_id) {
         return res.status(400).json({ error: "Missing user_id" });
       }
-
-      // === Handle photo1 & photo2
+      
+      const sanitizePhotoUrl = (url) => {
+        if (!url || typeof url !== "string") return null;
+        if (url.startsWith("blob:")) return null;
+        return url;
+      };
+      
       const photo1Path = req.files?.photo1
         ? `/uploads/spis/${req.files.photo1[0].filename}`
-        : req.body.photo1_url || null;
-
+        : sanitizePhotoUrl(req.body.photo1_url);
+      
       const photo2Path = req.files?.photo2
         ? `/uploads/spis/${req.files.photo2[0].filename}`
-        : req.body.photo2_url || null;
+        : sanitizePhotoUrl(req.body.photo2_url);
 
       // === Parse JSON fields
       const partMaterialJSON =

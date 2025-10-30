@@ -47,14 +47,26 @@ export default function SpisPartInfo({ data }) {
             <tr>
               <td colSpan="2" className="border border-gray-500 p-2 w-1/2 text-center">
                 <img
-                  src={data.photo1 ? `${serverUrl}${data.photo1}` : "/placeholder-image.png"}
+                  src={
+                    data.photo1
+                      ? data.photo1.startsWith("blob:")
+                        ? data.photo1 // jika blob, tampilkan langsung
+                        : `${serverUrl}${data.photo1}` // jika path dari backend
+                      : "/placeholder-image.png"
+                  }
                   alt="Foto 1"
                   className="mx-auto max-h-48 object-contain"
                 />
               </td>
               <td colSpan="2" className="border border-gray-500 p-2 w-1/2 text-center">
                 <img
-                  src={data.photo2 ? `${serverUrl}${data.photo2}` : "/placeholder-image.png"}
+                  src={
+                    data.photo2
+                      ? data.photo2.startsWith("blob:")
+                        ? data.photo2
+                        : `${serverUrl}${data.photo2}`
+                      : "/placeholder-image.png"
+                  }
                   alt="Foto 2"
                   className="mx-auto max-h-48 object-contain"
                 />

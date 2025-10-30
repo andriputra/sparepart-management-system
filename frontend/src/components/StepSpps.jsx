@@ -240,6 +240,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         'detail_part',
         "package_detail",
         "created_by",
+        "status",
         "approved_by",
       ];
   
@@ -269,7 +270,8 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       // Tambahkan hubungan SPIS dan User
       formData.append("spis_id", spisId);
       formData.append("user_id", userId);
-  
+      formData.append("status", "submitted");
+
       let response;
   
       if (existingSppsId) {
