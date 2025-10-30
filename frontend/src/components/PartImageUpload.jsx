@@ -54,7 +54,7 @@ export default function PartImageUpload({
             </label>
 
             <p className="text-xs text-gray-500 mt-2">
-              Format: JPG, PNG, JPEG (max 2MB)
+              Format: JPG, PNG, JPEG (max 10MB)
             </p>
 
             {/* Tombol Delete */}

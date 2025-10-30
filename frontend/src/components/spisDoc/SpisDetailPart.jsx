@@ -1,5 +1,5 @@
 export default function SpisDetailPart({ data }) {
-    const serverUrl = "http://127.0.0.1:5050";
+    const serverUrl = import.meta.env.VITE_SERVER_URL;
     const detailPartImage = Array.isArray(data.part_images)
       ? data.part_images
       : JSON.parse(data.part_images || "[]");
@@ -7,7 +7,7 @@ export default function SpisDetailPart({ data }) {
     return (
         <table className="w-full border border-gray-500 text-sm mb-6">
             <tbody>
-            <tr>
+            <tr className="bg-gray-100">
                 <td colSpan="5" className="border border-gray-500 p-2 font-semibold text-center">
                 Detail
                 </td>

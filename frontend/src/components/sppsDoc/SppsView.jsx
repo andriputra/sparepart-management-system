@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import { useParams } from "react-router-dom";
-import SpisHeader from "./SpisHeader";
-import SpisPartInfo from "./SpisPartInfo";
-import SpisInspectionDetail from "./SpisInspectionDetail";
-import SpisFooter from "./SpisFooter";
-import SpisDetailPart from "./SpisDetailPart";
+import SppsHeader from "./SppsHeader";
+import SppsGeneralInfo from "./SppsGeneralInfo";
+import SppsImages from "./SppsImages";
 
 export default function SpisView() {
     const { doc_no } = useParams();
@@ -15,25 +13,23 @@ export default function SpisView() {
     useEffect(() => {
         const fetchData = async () => {
           try {
-            const res = await api.get(`/spareparts/spis?doc_no=${encodeURIComponent(decodedDocNo)}`);
+            const res = await api.get(`/spareparts/spps?doc_no=${encodeURIComponent(decodedDocNo)}`);
             setData(res.data);
-            console.log("📄 Fetched SPIS data:", res.data);
+            console.log("Fetched SPPS data:", res.data);
           } catch (err) {
-            console.error("Error fetching SPIS:", err);
+            console.error("Error fetching SPPS:", err);
           }
         };
         fetchData();
     }, [decodedDocNo]);
 
-    if (!data) return <p className="text-center py-10">Memuat data SPIS...</p>;
+    if (!data) return <p className="text-center py-10">Memuat data SPPS...</p>;
 
     return (
         <div className="max-w-4xl mx-auto bg-white shadow p-6 print:p-0 print:shadow-none mt-6 mb-6">
-            <SpisHeader data={data} />
-            <SpisPartInfo data={data} />
-            <SpisInspectionDetail data={data} />
-            <SpisFooter data={data} />
-            <SpisDetailPart data={data}/>
+            <SppsHeader data={data} />
+            <SppsGeneralInfo data={data}/>
+            <SppsImages data={data}/>
 
             <div className="text-center mt-6 no-print">
                 <button

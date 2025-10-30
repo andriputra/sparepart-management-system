@@ -354,7 +354,7 @@ export default function StepSpis({ onNext, initialData }) {
       // 🔹 Append JSON fields
       formData.append("part_material", JSON.stringify(finalMaterials));
       formData.append("inspection", JSON.stringify(data.inspection || {}));
-      
+
       if (Array.isArray(data.part_images) && data.part_images.length > 0) {
         const imageDescriptions = [];
         const imageUrls = [];
@@ -803,7 +803,7 @@ export default function StepSpis({ onNext, initialData }) {
                   >
                     Upload Photo {index + 1}
                   </label>
-                  <p className="text-xs text-gray-500 mt-2">Format: JPG, PNG, JPEG (max 2MB)</p>
+                  <p className="text-xs text-gray-500 mt-2">Format: JPG, PNG, JPEG (max 10MB)</p>
                   </div>
                   {/* 🗑 Tombol Hapus */}
                   <button

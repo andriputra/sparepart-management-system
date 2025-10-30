@@ -1,7 +1,5 @@
 import express from "express";
 import db from "../config/db.js";
-import path from "path";
-import fs from "fs";
 
 const router = express.Router();
 
@@ -39,6 +37,11 @@ router.get("/with-documents", async (req, res) => {
         s.status AS spis_status,
         COALESCE(MAX(p.status), 'draft') AS spps_status,
         COALESCE(MAX(q.status), 'draft') AS spqs_status,
+        CASE
+          WHEN COALESCE(MAX(q.status), 'draft') != 'draft' THEN 'SPQS'
+          WHEN COALESCE(MAX(p.status), 'draft') != 'draft' THEN 'SPPS'
+          ELSE 'SPIS'
+        END AS document_type,
         s.updated_at
       FROM spis s
       LEFT JOIN spps p ON p.spis_id = s.id
@@ -55,85 +58,55 @@ router.get("/with-documents", async (req, res) => {
   }
 });
 
-// ✅ GET generate PDF (gabungan 3 file SPIS, SPPS, SPQS)
-router.get("/:id/generate-pdf", async (req, res) => {
-  const { id } = req.params;
+router.put("/approve/:doc_no", async (req, res) => {
+  const doc_no = decodeURIComponent(req.params.doc_no);
 
   try {
-    const [[spis]] = await db.query("SELECT * FROM spis WHERE id = ?", [id]);
-    const [[spps]] = await db.query("SELECT * FROM spps WHERE spis_id = ?", [id]);
-    const [[spqs]] = await db.query("SELECT * FROM spqs WHERE spis_id = ?", [id]);
+    // 🔹 Ambil fullname & signature user dengan role 'approval'
+    const [[approver]] = await db.query(
+      "SELECT fullname, signature_url FROM users WHERE role = 'approval' LIMIT 1"
+    );
 
+    if (!approver) {
+      return res.status(404).json({ error: "User dengan role 'approval' tidak ditemukan" });
+    }
+
+    const approved_by = approver.fullname;
+    const approved_signature_url = approver.signature_url || null;
+    console.log("Approver fullname:", approved_by);
+
+    // 🔹 Ambil spis_id berdasarkan doc_no
+    const [[spis]] = await db.query("SELECT id FROM spis WHERE doc_no = ?", [doc_no]);
     if (!spis) {
-      return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+      return res.status(404).json({ error: "SPIS tidak ditemukan untuk doc_no ini" });
     }
 
-    const pdfPath = path.join("uploads", "dummy.pdf");
-    if (!fs.existsSync(pdfPath)) {
-      fs.writeFileSync(pdfPath, "PDF Placeholder untuk SPIS-SPPS-SPQS");
-    }
-
-    res.download(pdfPath, `SPAREPART_${spis.doc_no}_ALL.pdf`);
-  } catch (err) {
-    console.error("Error generating PDF:", err);
-    res.status(500).json({ error: "Failed to generate PDF" });
-  }
-});
-
-// ✅ PUT approve dokumen
-router.put("/approve", async (req, res) => {
-  try {
-    const { approved_by, doc_no } = req.body; // doc_no dari body request
-
+    // 🔹 Update semua tabel berdasarkan spis_id
     await db.query(
-      `UPDATE spis SET approved_by = ?, status = 'completed' WHERE doc_no = ?`,
+      "UPDATE spis SET approved_by = ?, status = 'completed' WHERE doc_no = ?",
       [approved_by, doc_no]
     );
 
     await db.query(
-      `UPDATE spps SET approved_by = ?, status = 'completed' WHERE spis_id = (SELECT id FROM spis WHERE doc_no = ?)`,
-      [approved_by, doc_no]
+      "UPDATE spps SET approved_by = ?, status = 'completed' WHERE spis_id = ?",
+      [approved_by, spis.id]
     );
 
     await db.query(
-      `UPDATE spqs SET approved_by = ?, status = 'completed' WHERE spis_id = (SELECT id FROM spis WHERE doc_no = ?)`,
-      [approved_by, doc_no]
+      "UPDATE spqs SET approved_by = ?, status = 'completed' WHERE spis_id = ?",
+      [approved_by, spis.id]
     );
 
-    res.json({ message: "Documents approved successfully" });
+    res.json({
+      message: `Dokumen ${doc_no} berhasil di-approve oleh ${approved_by}`,
+      approved_by,
+    });
   } catch (err) {
-    console.error("Error approving documents:", err);
-    res.status(500).json({ error: "Failed to approve documents" });
-  }
-});
-
-// ✅ GET SPIS by doc_no (pakai query parameter)
-router.get("/spis", async (req, res) => {
-  try {
-    const doc_no = req.query.doc_no;
-    if (!doc_no)
-      return res.status(400).json({ error: "doc_no query parameter is required" });
-
-    // 🔍 Ambil data SPIS + signature dari user creator dan approver
-    const [[spis]] = await db.query(`
-      SELECT 
-        s.*, 
-        u1.signature_url AS created_signature_url, 
-        u2.signature_url AS approved_signature_url
-      FROM spis s
-      LEFT JOIN users u1 ON u1.id = s.user_id         
-LEFT JOIN users u2 ON u2.name = s.approved_by    
-      WHERE s.doc_no = ?
-    `, [doc_no]);
-
-    if (!spis) {
-      return res.status(404).json({ error: "Data SPIS tidak ditemukan" });
-    }
-
-    res.json(spis);
-  } catch (err) {
-    console.error("Error fetching SPIS:", err);
-    res.status(500).json({ error: "Failed to fetch SPIS" });
+    console.error("Error approving:", err);
+    res.status(500).json({
+      error: "Gagal menyetujui dokumen",
+      detail: err.message,
+    });
   }
 });
 
@@ -150,4 +123,114 @@ router.delete("/:doc_no", async (req, res) => {
   }
 });
 
+// ✅ GET SPIS by doc_no (pakai query parameter)
+router.get("/spis", async (req, res) => {
+  try {
+    const doc_no = req.query.doc_no;
+    if (!doc_no)
+      return res.status(400).json({ error: "doc_no query parameter is required" });
+
+    const [[spis]] = await db.query(`
+      SELECT 
+        s.*, 
+        u1.signature_url AS created_signature_url, 
+        u2.signature_url AS approved_signature_url
+      FROM spis s
+      LEFT JOIN users u1 ON u1.id = s.user_id         
+      LEFT JOIN users u2 ON u2.name = s.approved_by    
+      WHERE s.doc_no = ?
+    `, [doc_no]);
+
+    if (!spis) {
+      return res.status(404).json({ error: "Data SPIS tidak ditemukan" });
+    }
+
+    res.json(spis);
+  } catch (err) {
+    console.error("Error fetching SPIS:", err);
+    res.status(500).json({ error: "Failed to fetch SPIS" });
+  }
+});
+
+// ✅ GET SPPS by doc_no (pakai query parameter)
+router.get("/spps", async (req, res) => {
+  try {
+    const doc_no = req.query.doc_no;
+    if (!doc_no)
+      return res.status(400).json({ error: "doc_no query parameter is required" });
+
+    const [[spis]] = await db.query(`
+      SELECT 
+        s.*, 
+        u1.signature_url AS created_signature_url, 
+        u2.signature_url AS approved_signature_url
+      FROM spps s
+      LEFT JOIN users u1 ON u1.id = s.user_id         
+      LEFT JOIN users u2 ON u2.name = s.approved_by    
+      WHERE s.doc_no = ?
+    `, [doc_no]);
+
+    if (!spis) {
+      return res.status(404).json({ error: "Data SPPS tidak ditemukan" });
+    }
+
+    res.json(spis);
+  } catch (err) {
+    console.error("Error fetching SPPS:", err);
+    res.status(500).json({ error: "Failed to fetch SPPS" });
+  }
+});
+
+// ✅ Ambil ilustrasi part dari SPIS berdasarkan spis_id
+router.get("/spis/photo/:spis_id", async (req, res) => {
+  try {
+    const { spis_id } = req.params;
+    const [[spis]] = await db.query(
+      "SELECT photo1, photo2 FROM spis WHERE id = ?",
+      [spis_id]
+    );
+
+    if (!spis) {
+      return res.status(404).json({ error: "SPIS tidak ditemukan" });
+    }
+
+    res.json({
+      photo1: spis.photo1 || null,
+      photo2: spis.photo2 || null,
+    });
+    
+  } catch (err) {
+    console.error("Error fetching SPIS photo:", err);
+    res.status(500).json({ error: "Failed to fetch SPIS photo" });
+  }
+});
+
+// ✅ GET SPQS by doc_no (pakai query parameter)
+router.get("/spqs", async (req, res) => {
+  try {
+    const doc_no = req.query.doc_no;
+    if (!doc_no)
+      return res.status(400).json({ error: "doc_no query parameter is required" });
+
+    const [[spis]] = await db.query(`
+      SELECT 
+        s.*, 
+        u1.signature_url AS created_signature_url, 
+        u2.signature_url AS approved_signature_url
+      FROM spqs s
+      LEFT JOIN users u1 ON u1.id = s.user_id         
+      LEFT JOIN users u2 ON u2.name = s.approved_by    
+      WHERE s.doc_no = ?
+    `, [doc_no]);
+
+    if (!spis) {
+      return res.status(404).json({ error: "Data SPQS tidak ditemukan" });
+    }
+
+    res.json(spis);
+  } catch (err) {
+    console.error("Error fetching SPQS:", err);
+    res.status(500).json({ error: "Failed to fetch SPPS" });
+  }
+});
 export default router;

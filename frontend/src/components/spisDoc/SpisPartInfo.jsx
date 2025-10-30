@@ -1,5 +1,5 @@
 export default function SpisPartInfo({ data }) {
-    const serverUrl = "http://127.0.0.1:5050";
+    const serverUrl = import.meta.env.VITE_SERVER_URL;
   
     return (
       <>
@@ -41,8 +41,8 @@ export default function SpisPartInfo({ data }) {
               <td className="border border-gray-500 p-2">{data.detail_part || "-"}</td>
             </tr>
             <tr>
-              <td colSpan="2" className="border border-gray-500 p-2 w-1/2 text-center font-semibold">Foto 1</td>
-              <td colSpan="2" className="border border-gray-500 p-2 w-1/2 text-center font-semibold">Foto 2</td>
+              <td colSpan="2" className="border border-gray-500 p-2 w-1/2 text-center font-semibold bg-gray-100 ">Foto 1</td>
+              <td colSpan="2" className="border border-gray-500 p-2 w-1/2 text-center font-semibold bg-gray-100">Foto 2</td>
             </tr>
             <tr>
               <td colSpan="2" className="border border-gray-500 p-2 w-1/2 text-center">

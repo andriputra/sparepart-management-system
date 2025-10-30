@@ -19,7 +19,7 @@ export default function SpisInspectionDetail({ data }) {
         <>
         <table className="w-full border border-gray-500 text-sm mb-6">
             <tbody>
-                <tr>
+                <tr className="bg-gray-100">
                     <td colSpan="5" className="border border-gray-500 p-2 font-semibold text-center">Part Material</td>
                 </tr>
                 <tr>
@@ -78,7 +78,7 @@ export default function SpisInspectionDetail({ data }) {
 
         <table className="w-full border border-gray-500 text-sm mb-6">
             <tbody>
-                <tr>
+                <tr className="bg-gray-100">
                     <td colSpan="4" className="border border-gray-500 p-2 font-semibold text-center">Detail Inspeksi</td>
                 </tr>
                 <tr>

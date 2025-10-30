@@ -13,9 +13,10 @@ export default function SparepartList() {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 15;
     const navigate = useNavigate();
-
     const [showConfirm, setShowConfirm] = useState(false);
     const [selectedDocNo, setSelectedDocNo] = useState(null);
+    const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+    const [selectedApproveDocNo, setSelectedApproveDocNo] = useState(null);
     
     useEffect(() => {
         fetchSpareparts();
@@ -66,26 +67,6 @@ export default function SparepartList() {
         }
     };
 
-    const handleGeneratePDF = async (docNo) => {
-        try {
-        toast.info("Mengenerate PDF...");
-        const res = await api.get(`/spareparts/${docNo}/generate-pdf`, {
-            responseType: "blob",
-        });
-        const blob = new Blob([res.data], { type: "application/pdf" });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", `${docNo}_ALL.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        toast.success("PDF berhasil digenerate!");
-        } catch (err) {
-        console.error("Error generating PDF:", err);
-        toast.error("Gagal membuat PDF!");
-        }
-    };
-
     const getStatusBadge = (status) => {
         switch (status) {
         case "draft":
@@ -126,6 +107,30 @@ export default function SparepartList() {
         }
     };
 
+    const confirmApprove = (docNo) => {
+        setSelectedApproveDocNo(docNo);
+        setShowApproveConfirm(true);
+    };
+    
+    // 🔹 Fungsi untuk mengeksekusi approval (setelah konfirmasi)
+    const handleApprove = async () => {
+    if (!selectedApproveDocNo) return;
+        try {
+            toast.info("Menyetujui dokumen...");
+            await api.put(`/spareparts/approve/${encodeURIComponent(selectedApproveDocNo)}`, {
+                approved_by: localStorage.getItem("user_name") || "Approver",
+            });
+            toast.success("Dokumen berhasil di-approve!");
+            fetchSpareparts();
+        } catch (err) {
+            console.error("Error approving:", err);
+            toast.error("Gagal approve dokumen!");
+        } finally {
+            setShowApproveConfirm(false);
+            setSelectedApproveDocNo(null);
+        }
+    };
+
     return (
         <DashboardLayout>
             <div className="p-6">
@@ -156,275 +161,285 @@ export default function SparepartList() {
                     </div>
                     ) : (
                     <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
-                        {/* 💡 Responsive Table Wrapper */}
-                        <div className="overflow-x-auto relative">
-                            <div className="min-w-[1100px]">
-                                <table className="min-w-full border border-gray-200 text-sm">
-                                    <thead className="bg-gray-100 text-gray-700 sticky top-0 z-10">
-                                        <tr>
-                                            <th className="px-4 py-3 border">No</th>
-                                            <th className="px-4 py-3 border text-left">Document Number</th>
-                                            <th className="px-4 py-3 border text-left">Part Number</th>
-                                            <th className="px-4 py-3 border text-left">Created by</th>
-                                            <th className="px-4 py-3 border text-left">Approved by</th>
-                                            <th className="px-4 py-3 border text-center">SPIS</th>
-                                            <th className="px-4 py-3 border text-center">SPPS</th>
-                                            <th className="px-4 py-3 border text-center">SPQS</th>
-                                            <th className="px-4 py-3 border text-center">Created at</th>
-                                            <th className="px-4 py-3 border text-center">Aksi</th>
-                                            <th className="px-4 py-3 border"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {currentItems.map((item, index) => {
-                                            const role = (localStorage.getItem("role") || "").toLowerCase();
-                                            const normalize = (val) => (val || "").toLowerCase().trim();
-                                            
-                                            const isAllDraft =
-                                            item.spis_status === "draft" &&
-                                            item.spps_status === "draft" &&
-                                            item.spqs_status === "draft";
+                        <table className="min-w-full border border-gray-200 text-sm">
+                            <thead className="bg-gray-100 text-gray-700 sticky top-0 z-10 text-sm">
+                                <tr>
+                                    <th className="px-3 py-3 border">No</th>
+                                    <th className="px-3 py-3 border text-left">Doc Number</th>
+                                    <th className="px-3 py-3 border text-left">Part Number</th>
+                                    <th className="px-3 py-3 border text-left">Created by</th>
+                                    <th className="px-3 py-3 border text-left">Approved by</th>
+                                    <th className="px-3 py-3 border text-center">SPIS</th>
+                                    <th className="px-3 py-3 border text-center">SPPS</th>
+                                    <th className="px-3 py-3 border text-center">SPQS</th>
+                                    {/* <th className="px-3 py-3 border text-center">Created at</th> */}
+                                    <th colSpan={2} className="px-3 py-3 border text-center w-[20%]">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-[14px]">
+                                {currentItems.map((item, index) => {
+                                    const role = (localStorage.getItem("role") || "").toLowerCase();
 
-                                            const isAllSubmitted =
-                                            normalize.spis_status === "submitted" &&
-                                            normalize.spps_status === "submitted" &&
-                                            normalize.spqs_status === "submitted";
+                                    const statuses = [
+                                        item.spis_status,
+                                        item.spps_status,
+                                        item.spqs_status,
+                                    ].map((s) => (s || "").toLowerCase());
 
-                                            const isAnySubmitted = [item.spis_status, item.spps_status, item.spqs_status].some(
-                                            (status) => status === "submitted"
-                                            );
+                                    const isAllDraft = statuses.every((s) => s === "draft");
+                                    const isAllSubmitted = statuses.every((s) => s === "submitted");
+                                    const isAllCompleted = statuses.every((s) => s === "completed");
+                                    const isAnySubmitted = statuses.some((s) => s === "submitted");
 
-                                            const isAllCompleted =
-                                            normalize.spis_status === "completed" &&
-                                            normalize.spps_status === "completed" &&
-                                            normalize.spqs_status === "completed";
+                                    return (
+                                    <tr
+                                        key={item.doc_no}
+                                        className={`hover:bg-gray-50 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                                    >
+                                        <td className="px-3 py-2 border text-center">{startIndex + index + 1}</td>
+                                        <td className="px-3 py-2 border">{item.doc_no}</td>
+                                        <td className="px-3 py-2 border">{item.part_number}</td>
+                                        <td className="px-3 py-2 border">{item.created_by}</td>
+                                        <td className="px-3 py-2 border">{item.approved_by || "-"}</td>
 
-                                            const handleApprove = async () => {
-                                            try {
-                                                toast.info("Menyetujui dokumen...");
-                                                await api.put(`/spareparts/approve/${item.doc_no}`, {
-                                                approved_by: localStorage.getItem("user_name") || "Approver",
-                                                });
-                                                toast.success("Dokumen berhasil di-approve!");
-                                                fetchSpareparts(); // refresh tabel
-                                            } catch (err) {
-                                                console.error("Error approving:", err);
-                                                toast.error("Gagal approve dokumen!");
-                                            }
-                                            };
-
-                                            return (
-                                            <tr
-                                                key={item.doc_no}
-                                                className={`hover:bg-gray-50 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                                        {["spis_status", "spps_status", "spqs_status"].map((key) => (
+                                        <td key={key} className="px-3 py-2 border text-center">
+                                            <span
+                                            className={`px-2 py-1 rounded text-[10px] font-semibold ${getStatusBadge(
+                                                item[key]
+                                            )}`}
                                             >
-                                                <td className="px-4 py-2 border text-center">{startIndex + index + 1}</td>
-                                                <td className="px-4 py-2 border">{item.doc_no}</td>
-                                                <td className="px-4 py-2 border">{item.part_number}</td>
-                                                <td className="px-4 py-2 border">{item.created_by}</td>
-                                                <td className="px-4 py-2 border">{item.approved_by || "-"}</td>
+                                            {item[key]?.toUpperCase() || "-"}
+                                            </span>
+                                        </td>
+                                        ))}
 
-                                                {["spis_status", "spps_status", "spqs_status"].map((key) => (
-                                                <td key={key} className="px-4 py-2 border text-center">
-                                                    <span
-                                                    className={`px-2 py-1 rounded text-[10px] font-semibold ${getStatusBadge(
-                                                        item[key]
-                                                    )}`}
-                                                    >
-                                                    {item[key]?.toUpperCase() || "-"}
-                                                    </span>
-                                                </td>
-                                                ))}
+                                        {/* <td className="px-3 py-2 border text-center">
+                                            {new Date(item.updated_at).toLocaleDateString("id-ID", {
+                                                year: "numeric",
+                                                month: "2-digit",
+                                                day: "2-digit",
+                                            })}
+                                        </td> */}
 
-                                                <td className="px-4 py-2 border text-center">
-                                                {new Date(item.updated_at).toLocaleDateString("id-ID", {
-                                                    year: "numeric",
-                                                    month: "2-digit",
-                                                    day: "2-digit",
-                                                })}
-                                                </td>
-
-                                                {/* === ACTION BUTTONS === */}
-                                                <td className="px-4 py-2 border text-center">
-                                                    <div className="flex justify-center flex-wrap gap-2">
-                                                        {(() => {
-                                                        if (role === "approval" && !isAllSubmitted && !isAllCompleted) {
-                                                            return (
-                                                                <button
-                                                                    onClick={() => window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank")}
-                                                                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                    <FaEye /> View
-                                                                </button>
-                                                            );
-                                                        }
-
-                                                        // Semua draft → hanya SPIS aktif
-                                                        if (isAllDraft) {
-                                                            return (
-                                                            <>
-                                                                <button
-                                                                onClick={() => (window.location.href = `/document-create?step=1`)}
-                                                                className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                <FaEdit /> SPIS
-                                                                </button>
-                                                                <button
-                                                                disabled
-                                                                className="bg-gray-300 text-gray-500 px-3 py-1 rounded flex items-center gap-1 cursor-not-allowed"
-                                                                >
-                                                                <FaArrowRight /> SPPS
-                                                                </button>
-                                                                <button
-                                                                disabled
-                                                                className="bg-gray-300 text-gray-500 px-3 py-1 rounded flex items-center gap-1 cursor-not-allowed"
-                                                                >
-                                                                <FaArrowRight /> SPQS
-                                                                </button>
-                                                            </>
-                                                            );
-                                                        }
-
-                                                        // Sebagian submitted tapi belum semua
-                                                        if (isAnySubmitted && !isAllSubmitted) {
-                                                            return (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank")}
-                                                                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                <FaEye /> View
-                                                                </button>
-
-                                                                {item.spps_status === "draft" && item.spis_status === "submitted" && (
-                                                                <button
-                                                                    onClick={() => handleContinue(item.doc_no, "spps")}
-                                                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                    <FaArrowRight /> Lanjut SPPS
-                                                                </button>
-                                                                )}
-
-                                                                {item.spqs_status === "draft" && item.spps_status === "submitted" && (
-                                                                <button
-                                                                    onClick={() => handleContinue(item.doc_no, "spqs")}
-                                                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                    <FaArrowRight /> Lanjut SPQS
-                                                                </button>
-                                                                )}
-                                                            </>
-                                                            );
-                                                        }
-
-                                                        // Semua submitted
-                                                        if (isAllSubmitted) {
-                                                            return (
-                                                            <>
-                                                                <button
-                                                                onClick={() => window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank")}
-                                                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                <FaEye /> View
-                                                                </button>
-
-                                                                {role === "approval" && (
-                                                                <button
-                                                                    onClick={handleApprove}
-                                                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                    <FaFilePdf /> Approve
-                                                                </button>
-                                                                )}
-                                                            </>
-                                                            );
-                                                        }
-
-                                                        // Semua completed → View + PDF
-                                                        if (isAllCompleted) {
-                                                            return (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank")}
-                                                                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                <FaEye /> View
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleGeneratePDF(item.doc_no)}
-                                                                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                <FaFilePdf /> PDF
-                                                                </button>
-                                                            </>
-                                                            );
-                                                        }
-
-                                                        // Default
-                                                        return (
-                                                            <>
-                                                            <button
-                                                                onClick={() => (window.location.href = `/document-create?step=1`)}
-                                                                className={`px-3 py-1 rounded flex items-center gap-1 text-white ${
-                                                                item.spis_status === "completed"
-                                                                    ? "bg-green-600 hover:bg-green-700"
-                                                                    : "bg-yellow-500 hover:bg-yellow-600"
-                                                                }`}
-                                                            >
-                                                                <FaEdit /> SPIS
-                                                            </button>
-
-                                                            <button
-                                                                onClick={() => handleContinue(item.doc_no, "spps")}
-                                                                disabled={item.spis_status !== "completed"}
-                                                                className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                item.spps_status === "completed"
-                                                                    ? "bg-green-600 hover:bg-green-700 text-white"
-                                                                    : item.spis_status === "completed"
-                                                                    ? "bg-blue-600 hover:bg-blue-700 text-white"
-                                                                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                }`}
-                                                            >
-                                                                <FaArrowRight /> SPPS
-                                                            </button>
-
-                                                            <button
-                                                                onClick={() => handleContinue(item.doc_no, "spqs")}
-                                                                disabled={item.spps_status !== "completed"}
-                                                                className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                item.spqs_status === "completed"
-                                                                    ? "bg-green-600 hover:bg-green-700 text-white"
-                                                                    : item.spps_status === "completed"
-                                                                    ? "bg-green-500 hover:bg-green-600 text-white"
-                                                                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                }`}
-                                                            >
-                                                                <FaArrowRight /> SPQS
-                                                            </button>
-                                                            </>
-                                                        );
-                                                        })()}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-2 border text-center">
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedDocNo(item.doc_no);
-                                                            setShowConfirm(true);
-                                                        }}
-                                                        className="text-red-600 hover:text-red-800 flex items-center justify-center w-full h-full"
-                                                        title="Hapus Dokumen"
+                                        {/* === ACTION BUTTONS === */}
+                                        <td className="px-3 py-2 border text-center">
+                                            <div className="flex justify-center flex-wrap gap-2">
+                                                {(() => {
+                                                if (role === "approval" && !isAllSubmitted && !isAllCompleted) {
+                                                    return (
+                                                        <button
+                                                            // onClick={() => window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank")}
+                                                            onClick={() => {
+                                                                const docPath = item.document_type || "SPIS";
+                                                                window.open(`/document/view/${encodeURIComponent(docPath)}/${encodeURIComponent(item.doc_no)}`, "_blank");
+                                                            }}
+                                                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"
                                                         >
-                                                        <FaTrashAlt />
+                                                            <FaEye />
+                                                        </button>
+                                                    );
+                                                }
+
+                                                // Semua draft → hanya SPIS aktif
+                                                if (isAllDraft) {
+                                                    return (
+                                                    <>
+                                                        <button
+                                                            onClick={() => (window.location.href = `/document-create?step=1`)}
+                                                            className="bg-yellow-500 hover:bg-yellow-600 text-sm text-white px-3 py-1 rounded flex items-center gap-1"
+                                                        >
+                                                            <FaEdit /> SPIS
+                                                        </button>
+                                                        <button
+                                                            disabled
+                                                            className="bg-gray-300 text-gray-500 text-sm px-3 py-1 rounded flex items-center gap-1 cursor-not-allowed"
+                                                        >
+                                                            <FaArrowRight /> SPPS
+                                                        </button>
+                                                        <button
+                                                            disabled
+                                                            className="bg-gray-300 text-gray-500 text-sm px-3 py-1 rounded flex items-center gap-1 cursor-not-allowed"
+                                                            >
+                                                            <FaArrowRight /> SPQS
+                                                        </button>
+                                                    </>
+                                                    );
+                                                }
+
+                                                // Sebagian submitted tapi belum semua
+                                                if (isAnySubmitted && !isAllSubmitted) {
+                                                    return (
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (role !== "viewer") {
+                                                                // window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank");
+                                                                const docPath = item.document_type || "SPIS";
+                                                                window.open(`/document/view/${encodeURIComponent(docPath)}/${encodeURIComponent(item.doc_no)}`, "_blank");
+                                                                }
+                                                            }}
+                                                            disabled={role === "viewer"}
+                                                            className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                                role === "viewer"
+                                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                : "bg-blue-500 hover:bg-blue-600 text-white"
+                                                            }`}
+                                                            title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lihat Dokumen"}
+                                                            >
+                                                            <FaEye />
+                                                        </button>
+
+                                                        {item.spps_status === "draft" && item.spis_status === "submitted" && (
+                                                        <button
+                                                            onClick={() => handleContinue(item.doc_no, "spps")}
+                                                            disabled={role === "viewer"}
+                                                            className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                                role === "viewer"
+                                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                : "bg-green-600 hover:bg-green-700 text-white"
+                                                            }`}
+                                                            title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lihat Dokumen"}
+                                                            >
+                                                            <FaArrowRight /> Lanjut SPPS
+                                                        </button>
+                                                        )}
+
+                                                        {item.spqs_status === "draft" && item.spps_status === "submitted" && (
+                                                        <button
+                                                            onClick={() => handleContinue(item.doc_no, "spqs")}
+                                                            className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                                role === "viewer"
+                                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                : "bg-green-600 hover:bg-green-700 text-white"
+                                                            }`}
+                                                            title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lihat Dokumen"}
+                                                            >
+                                                            <FaArrowRight /> Lanjut SPQS
+                                                        </button>
+                                                        )}
+                                                    </>
+                                                    );
+                                                }
+
+                                                // Semua submitted
+                                                if (isAllSubmitted) {
+                                                    return (
+                                                    <>
+                                                        <button
+                                                            // onClick={() => window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank")}
+                                                            onClick={() => {
+                                                                const docPath = item.document_type || "SPIS";
+                                                                window.open(`/document/view/${encodeURIComponent(docPath)}/${encodeURIComponent(item.doc_no)}`, "_blank");
+                                                            }}
+                                                            disabled={role === "viewer"}
+                                                            className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                                role === "viewer"
+                                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                : "bg-blue-500 hover:bg-blue-600 text-white"
+                                                            }`}
+                                                            title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lihat Dokumen"}
+                                                            >
+                                                            <FaEye />
+                                                        </button>
+
+                                                        {role === "approval" && (
+                                                            <button
+                                                                // onClick={handleApprove}
+                                                                onClick={() => confirmApprove(item.doc_no)}
+                                                                className="bg-red-300 hover:bg-red-700 hover:text-white text-red-800 px-3 py-1 rounded flex items-center gap-1"
+                                                            >
+                                                                <FaFilePdf /> Approve
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                    );
+                                                }
+
+                                                // Semua completed → View + PDF + Label Approved
+                                                if (isAllCompleted) {
+                                                    return (
+                                                        <div className="flex flex-row items-center gap-2">
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    // onClick={() => window.open(`/document/view/${encodeURIComponent(item.doc_no)}`, "_blank")}
+                                                                    onClick={() => {
+                                                                        const docPath = item.document_type || "SPIS";
+                                                                        window.open(`/document/view/${encodeURIComponent(docPath)}/${encodeURIComponent(item.doc_no)}`, "_blank");
+                                                                    }}
+                                                                    className="bg-red-500 hover:bg-red-600 text-sm text-white text-white px-3 py-1 rounded flex items-center gap-1"
+                                                                >
+                                                                    <FaFilePdf /> Download PDF
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                // Default
+                                                return (
+                                                    <>
+                                                    <button
+                                                        onClick={() => (window.location.href = `/document-create?step=1`)}
+                                                        className={`px-3 py-1 rounded flex items-center gap-1 text-white ${
+                                                        item.spis_status === "completed"
+                                                            ? "bg-green-600 hover:bg-green-700"
+                                                            : "bg-yellow-500 hover:bg-yellow-600"
+                                                        }`}
+                                                    >
+                                                        <FaEdit /> SPIS
                                                     </button>
-                                                </td>
-                                            </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+
+                                                    <button
+                                                        onClick={() => handleContinue(item.doc_no, "spps")}
+                                                        disabled={item.spis_status !== "completed"}
+                                                        className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                        item.spps_status === "completed"
+                                                            ? "bg-green-600 hover:bg-green-700 text-white"
+                                                            : item.spis_status === "completed"
+                                                            ? "bg-blue-600 hover:bg-blue-700 text-white"
+                                                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                        }`}
+                                                    >
+                                                        <FaArrowRight /> SPPS
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleContinue(item.doc_no, "spqs")}
+                                                        disabled={item.spps_status !== "completed"}
+                                                        className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                        item.spqs_status === "completed"
+                                                            ? "bg-green-600 hover:bg-green-700 text-white"
+                                                            : item.spps_status === "completed"
+                                                            ? "bg-green-500 hover:bg-green-600 text-white"
+                                                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                        }`}
+                                                    >
+                                                        <FaArrowRight /> SPQS
+                                                    </button>
+                                                    </>
+                                                );
+                                                })()}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-2 border text-center">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedDocNo(item.doc_no);
+                                                    setShowConfirm(true);
+                                                }}
+                                                className="text-red-600 hover:text-red-800 flex items-center justify-center w-full h-full"
+                                                title="Hapus Dokumen"
+                                                >
+                                                <FaTrashAlt />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+
                         {filteredData.length > itemsPerPage && (
                             <div className="flex justify-end items-center gap-2 mt-6 pb-6 pr-6">
                                 <button
@@ -470,6 +485,7 @@ export default function SparepartList() {
                 )}
             </div>
 
+            {/* Modal */}
             {showConfirm && (
                 <ModalConfirm
                     title="Hapus Dokumen"
@@ -482,6 +498,19 @@ export default function SparepartList() {
                     setSelectedDocNo(null);
                     }}
                 />
+            )}
+            {showApproveConfirm && (
+            <ModalConfirm
+                title="Konfirmasi Approval"
+                message={`Apakah kamu yakin ingin menyetujui dokumen ${selectedApproveDocNo}?`}
+                confirmText="Ya, Approve"
+                cancelText="Batal"
+                onConfirm={handleApprove}
+                onCancel={() => {
+                setShowApproveConfirm(false);
+                setSelectedApproveDocNo(null);
+                }}
+            />
             )}
         </DashboardLayout>
     );

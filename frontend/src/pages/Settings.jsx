@@ -142,7 +142,7 @@ export default function Settings() {
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Name
+                        Username
                     </label>
                     <input
                         type="text"
