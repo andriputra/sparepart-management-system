@@ -4,52 +4,6 @@ import db from "../config/db.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
-
-// ✅ Save final SPPS
-// router.post("/", upload.any(), async (req, res) => {
-//   try {
-//     const fields = req.body;
-//     const { user_id, spis_id } = fields;
-
-//     // ✅ Tambahkan validasi wajib
-//     if (!user_id || !spis_id) {
-//       return res.status(400).json({ error: "user_id dan spis_id wajib diisi" });
-//     }
-
-//     // 🔹 Map file upload
-//     const uploadedFiles = {};
-//     (req.files || []).forEach((file) => {
-//       uploadedFiles[file.fieldname] = `/uploads/${file.filename}`;
-//     });
-
-//     // 🔹 Kolom valid di tabel `spps`
-//     const allowedFields = [
-//       "doc_no", "date", "part_number", "supplier", "part_description", "qty",
-//       "part_weight", "part_dimension", "created_by", "approved_by", "detail_part",
-//       "package_material", "package_code", "package_detail", 
-//       "spis_id", "user_id", "status",
-//       "package_0", "package_1", "package_2", "package_3",
-//       "package_illustration_0", "package_illustration_1", "result_illustration"
-//     ];
-
-//     const rawData = { ...fields, ...uploadedFiles };
-//     const finalData = Object.keys(rawData)
-//       .filter((key) => allowedFields.includes(key))
-//       .reduce((obj, key) => {
-//         obj[key] = rawData[key];
-//         return obj;
-//       }, {});
-
-//     const [result] = await db.query("INSERT INTO spps SET ?", [finalData]);
-
-//     await db.query("UPDATE spis SET progress_status = 'step2' WHERE id = ?", [spis_id]);
-
-//     res.json({ message: "SPPS saved successfully", id: result.insertId });
-//   } catch (err) {
-//     console.error("❌ Error saving SPPS:", err);
-//     res.status(500).json({ error: "Failed to save SPPS" });
-//   }
-// });
 router.post("/", upload.any(), async (req, res) => {
   try {
     const fields = req.body;

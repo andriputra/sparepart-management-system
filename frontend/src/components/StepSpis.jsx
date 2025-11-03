@@ -53,12 +53,7 @@ export default function StepSpis({ onNext, initialData }) {
 
   // 🔹 Sinkronisasi state lokal dan Redux
   const [data, setData] = useState(initialData && Object.keys(initialData).length > 0 ? initialData : spis || defaultData);
-  
-  // const images = Array.isArray(data.part_images)
-  // ? data.part_images
-  // : typeof data.part_images === "string" && data.part_images.startsWith("[")
-  // ? JSON.parse(data.part_images)
-  // : [];
+
   const images = Array.isArray(data.part_images)
     ? data.part_images
     : data.part_images
@@ -162,13 +157,24 @@ export default function StepSpis({ onNext, initialData }) {
     }
   };
 
-  // ✅ Handle material (multi-checkbox)
   const handleMaterialChange = (e) => {
     const { value, checked } = e.target;
     setData((prev) => {
+      let currentMaterials = prev.part_material;
+      if (typeof currentMaterials === "string") {
+        try {
+          currentMaterials = JSON.parse(currentMaterials);
+        } catch {
+          currentMaterials = [];
+        }
+      } else if (!Array.isArray(currentMaterials)) {
+        currentMaterials = [];
+      }
+
       const materials = checked
-        ? [...(prev.part_material || []), value]
-        : prev.part_material.filter((m) => m !== value);
+        ? [...currentMaterials, value]
+        : currentMaterials.filter((m) => m !== value);
+
       return { ...prev, part_material: materials };
     });
   };

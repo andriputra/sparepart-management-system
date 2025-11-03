@@ -1,9 +1,19 @@
-import { useRef, useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import { setSppsData } from "../store/sppsSlice";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 import PartImageUpload from "./PartImageUpload";
+
+const formatDate = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (isNaN(date)) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const generateDocNo = async () => {
   try {
@@ -18,10 +28,15 @@ const generateDocNo = async () => {
   }
 };
 
+const BASE_URL = import.meta.env.VITE_SERVER_URL;
+const getFullImageUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${BASE_URL}${path.startsWith("/") ? path : "/" + path}`;
+};
+
 export default function StepSpps({ onNext, onPrev, initialData }) {
   const dispatch = useDispatch();
-  const sppsDataFromStore = useSelector((state) => state.spps.data);
-  const loadedRef = useRef(false);
 
   const defaultData = {
     doc_no: "",
@@ -45,7 +60,6 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     ...defaultData,
     ...(initialData
       ? {
-          // hanya ambil field yang relevan dari SPIS
           date: initialData.date,
           part_number: initialData.part_number,
           supplier: initialData.supplier,
@@ -54,19 +68,11 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
           part_weight: initialData.inspection?.weight,
           part_dimension: initialData.inspection?.package_dimension,
           created_by: initialData.name,
-          illustration_part: initialData.photo1_url || initialData.photo1,
+          illustration_part: getFullImageUrl(initialData.photo1_url || initialData.photo1),
         }
       : {}),
   });
 
-  useEffect(() => {
-    if (sppsDataFromStore && Object.keys(sppsDataFromStore).length > 0) {
-      setData((prev) => ({
-        ...prev,
-        ...sppsDataFromStore,
-      }));
-    }
-  }, [sppsDataFromStore]);
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
@@ -84,8 +90,10 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       setData((prev) => ({
         ...prev,
         ...defaultData,
-        ...initialData,
-        date: initialData.date || prev.date,
+        ...Object.fromEntries(
+          Object.entries(initialData).filter(([key]) => key !== "doc_no")
+        ),
+        date: formatDate(initialData.date) || prev.date,
         part_number: initialData.part_number || prev.part_number,
         supplier: initialData.supplier || prev.supplier,
         part_description: initialData.part_description || prev.part_description,
@@ -93,104 +101,76 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         part_weight: parsedInspection.weight || prev.part_weight,
         part_dimension: parsedInspection.package_dimension || prev.part_dimension,
         created_by: initialData.name || prev.created_by,
-        illustration_part:
-          initialData.photo1_url || initialData.photo1 || prev.illustration_part,
+        illustration_part: getFullImageUrl(initialData.photo1_url || initialData.photo1) || prev.illustration_part,
       }));
     }
   }, [initialData]);
 
-  // === Generate doc no ===
+  // === Inisialisasi data SPIS (by spis_id from localStorage/query) ===
   useEffect(() => {
-    const initDocNo = async () => {
-      const savedDocNo = localStorage.getItem("spps_doc_no");
-      if (savedDocNo) {
-        setData((prev) => ({ ...prev, doc_no: savedDocNo }));
-        return;
-      }
-      const newDocNo = await generateDocNo();
-      setData((prev) => ({ ...prev, doc_no: newDocNo }));
-      localStorage.setItem("spps_doc_no", newDocNo);
-    };
-    initDocNo();
-  }, []);
-
-  
-  useEffect(() => {
-    try {
-      const safeData = Object.fromEntries(
-        Object.entries(data).map(([key, value]) => {
-          if (
-            value instanceof File ||
-            typeof value === "function" ||
-            (typeof value === "object" && value !== null && "window" in value)
-          ) {
-            return [key, null];
+    const fetchInitialSpis = async () => {
+      let spisId =
+        localStorage.getItem("spis_id") ||
+        new URLSearchParams(window.location.search).get("spis_id");
+      if (spisId) {
+        try {
+          const res = await api.get(`/spis/by-id/${spisId}`);
+          if (res.data) {
+            const initial = res.data;
+            let parsedInspection = {};
+            try {
+              if (typeof initial.inspection === "string") {
+                parsedInspection = JSON.parse(initial.inspection);
+              } else if (
+                typeof initial.inspection === "object" &&
+                initial.inspection !== null
+              ) {
+                parsedInspection = initial.inspection;
+              }
+            } catch (err) {}
+            setData((prev) => ({
+              ...prev,
+              date: formatDate(initial.date) || "",
+              part_number: initial.part_number || "",
+              supplier: initial.supplier || "",
+              part_description: initial.part_description || "",
+              part_weight: parsedInspection.weight || "",
+              part_dimension: parsedInspection.package_dimension || "",
+              detail_part: initial.detail_part || "",
+              created_by: initial.name || "",
+              illustration_part: getFullImageUrl(initial.photo1_url || initial.photo1),
+            }));
           }
-          return [key, value];
-        })
-      );
-  
-      localStorage.setItem("spps_form_data", JSON.stringify(safeData));
-    } catch (err) {
-      console.error("Failed to save SPPS form data:", err);
-    }
-  }, [data]);
-
-  // === Load user fullname ===
-  useEffect(() => {
-    const fetchUserName = async () => {
-      try {
-        const userId = localStorage.getItem("user_id");
-        if (!userId) return;
-        const res = await api.get(`/auth/user/${userId}`);
-        const fullName = res.data?.fullname || "";
-        setData((prev) => ({ ...prev, created_by: fullName }));
-      } catch (err) {
-        console.error("Failed to fetch user name:", err);
+        } catch (err) {
+          toast.error("Gagal mengambil data SPIS.");
+        }
+      } else {
+        // Jika tidak ada SPIS, generate doc_no baru
+        const newDocNo = await generateDocNo();
+        setData((prev) => ({ ...prev, doc_no: newDocNo }));
       }
     };
-    fetchUserName();
+    fetchInitialSpis();
+    // eslint-disable-next-line
   }, []);
 
-  // === Load draft ===
+  // === Generate doc_no & date jika belum ada ===
   useEffect(() => {
-    const userId = localStorage.getItem("user_id");
-    const activeDocNo = localStorage.getItem("spis_doc_no");
-    if (userId && !loadedRef.current && !activeDocNo) {
-      loadedRef.current = true;
-      api.get(`/spps/draft/${userId}`).then((res) => {
-        if (res.data && !res.data.doc_no) {
-          setData((prev) => ({ ...prev, ...res.data }));
-          toast.info("Loaded your saved SPPS draft.");
-        }
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!initialData || Object.keys(initialData).length === 0) return;
+    const initDocNoAndDate = async () => {
+      if (!data.doc_no) {
+        const newDocNo = await generateDocNo();
+        setData((prev) => ({ ...prev, doc_no: newDocNo }));
+      }
+      if (!data.date) {
+        const today = new Date().toISOString().split("T")[0];
+        setData((prev) => ({ ...prev, date: today }));
+      }
+    };
+    initDocNoAndDate();
+    // eslint-disable-next-line
+  }, [data.doc_no, data.date]);
   
-    setData((prev) => {
-      if (Object.keys(prev).some((key) => prev[key])) return prev;
-  
-      const updated = {
-        ...prev,
-        date: initialData.date || "",
-        part_number: initialData.part_number || "",
-        supplier: initialData.supplier || "",
-        part_description: initialData.part_description || "",
-        part_weight: initialData.inspection?.weight || "",
-        part_dimension: initialData.inspection?.package_dimension || "",
-        detail_part: initialData.detail_part || "",
-        created_by: initialData.name || "",
-        illustration_part:
-          initialData.photo1_url ||
-          initialData.photo1 ||
-          null,
-      };
-      return updated;
-    });
-  }, [initialData]);
+  // Hapus efek localStorage spps_form_data, spps_doc_no dsb
 
   useEffect(() => {
     const serializableData = Object.fromEntries(
@@ -244,10 +224,12 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       "detail_part",
       "part_weight",
       "part_dimension",
-      "qty"
+      "qty",
     ];
     const isEmpty = requiredFields.some(
-      (field) => !data[field] || (typeof data[field] === "string" && data[field].trim() === "")
+      (field) =>
+        !data[field] ||
+        (typeof data[field] === "string" && data[field].trim() === "")
     );
     if (isEmpty) {
       toast.error("Harap isi semua field yang wajib diisi (*).");
@@ -260,7 +242,9 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       const existingSppsId = localStorage.getItem("spps_id");
 
       if (!spisId) {
-        toast.error("SPIS ID tidak ditemukan. Silakan mulai dari Step 1 (SPIS).");
+        toast.error(
+          "SPIS ID tidak ditemukan. Silakan mulai dari Step 1 (SPIS)."
+        );
         return;
       }
 
@@ -276,7 +260,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         "part_dimension",
         "package_material",
         "package_code",
-        'detail_part',
+        "detail_part",
         "package_detail",
         "created_by",
         "status",
@@ -295,13 +279,14 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
           formData.append(`package_${i}`, data[`package_${i}`]);
         }
       }
-
       for (let i = 0; i < 2; i++) {
         if (data[`package_illustration_${i}`] instanceof File) {
-          formData.append(`package_illustration_${i}`, data[`package_illustration_${i}`]);
+          formData.append(
+            `package_illustration_${i}`,
+            data[`package_illustration_${i}`]
+          );
         }
       }
-
       if (data.result_illustration instanceof File) {
         formData.append("result_illustration", data.result_illustration);
       }
@@ -309,10 +294,8 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       // Tambahkan hubungan SPIS dan User
       formData.append("spis_id", spisId);
       formData.append("user_id", userId);
-      formData.append("status", "submitted");
 
       let response;
-
       if (existingSppsId) {
         // 🟡 Jika sudah pernah dibuat → UPDATE
         response = await api.put(`/spps/${existingSppsId}`, formData, {
@@ -324,19 +307,18 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         response = await api.post("/spps", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-
         // Simpan id SPPS ke localStorage untuk referensi update berikutnya
         if (response.data?.id) {
           localStorage.setItem("spps_id", response.data.id);
         }
-
         toast.success("SPPS created successfully!");
       }
-
-      // Dispatch to redux after successful API response, before onNext
+      // Simpan spps_id ke localStorage setiap insert/update
+      if (response?.data?.id) {
+        localStorage.setItem("spps_id", response.data.id);
+      }
       dispatch(setSppsData(data));
       onNext({ ...data, spps_id: response?.data?.id || existingSppsId });
-
     } catch (err) {
       console.error("Error saving SPPS:", err);
       toast.error("Failed to save SPPS");
@@ -361,7 +343,6 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
           <div key={f.name}>
             <label className="block text-sm mb-1">
               {f.label}
-              {/* Tambahkan asterisk pada semua field kecuali Package Material/Code/Detail */}
               {["doc_no", "date", "part_number", "supplier", "part_description", "detail_part", "part_weight", "part_dimension", "qty"].includes(f.name) && (
                 <span className="text-red-500">*</span>
               )}

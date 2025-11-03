@@ -29,9 +29,6 @@ export default function SpqsFooter({ data }) {
                         <td className="border border-gray-500 p-2 font-semibold text-center w-1/3">
                             Menyetujui
                         </td>
-                        <td className="border border-gray-500 p-2 font-semibold text-center w-1/3">
-                            Mengetahui
-                        </td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-8 align-end text-center">
@@ -57,9 +54,6 @@ export default function SpqsFooter({ data }) {
                                     Belum di-approve
                                 </p>
                             )}
-                        </td>
-                        <td className="border border-gray-500 p-8 align-end text-center">
-
                         </td>
                     </tr>
                 </tbody>

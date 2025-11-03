@@ -56,39 +56,37 @@ export default function SparepartList() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const currentItems = filteredData.slice(startIndex, startIndex + itemsPerPage);
 
-    console.log("Filtered Data:", currentItems);
+    // console.log("Filtered Data:", currentItems);
 
-    const handleContinue = (docNo, nextStep) => {
+    // const handleContinue = (docNo, nextStep) => {
+    //     if (!docNo) {
+    //       toast.error("Tidak ada dokumen draft untuk dilanjutkan!");
+    //       return;
+    //     }
+      
+    //     if (nextStep === "spps") {
+    //       localStorage.setItem("spps_doc_no", docNo);
+    //       window.location.href = `/document-create?step=2&doc_no=${encodeURIComponent(docNo)}`;
+    //     } else if (nextStep === "spqs") {
+    //       localStorage.setItem("spqs_doc_no", docNo);
+    //       window.location.href = `/document-create?step=3&doc_no=${encodeURIComponent(docNo)}`;
+    //     }
+    //   };
+
+    const handleContinue = (docNo, nextStep, spisId, sppsId, spqsId) => {
         if (!docNo) {
           toast.error("Tidak ada dokumen draft untuk dilanjutkan!");
           return;
         }
       
         if (nextStep === "spps") {
-          localStorage.setItem("spps_doc_no", docNo);
-          window.location.href = `/document-create?step=2&doc_no=${encodeURIComponent(docNo)}`;
+          window.location.href = `/document-create?step=2&spis_id=${spisId}&spps_id=${sppsId}`;
         } else if (nextStep === "spqs") {
-          localStorage.setItem("spqs_doc_no", docNo);
-          window.location.href = `/document-create?step=3&doc_no=${encodeURIComponent(docNo)}`;
+          window.location.href = `/document-create?step=3&spis_id=${spisId}&spps_id=${sppsId}&spqs_id=${spqsId}`;
+        } else {
+          window.location.href = `/document-create?step=1&spis_id=${spisId}`;
         }
-      };
-    // const handleContinue = (docNo, nextStep, spisId) => {
-    //     if (!docNo) {
-    //       toast.error("Tidak ada dokumen draft untuk dilanjutkan!");
-    //       return;
-    //     }
-      
-    //     // simpan ID SPIS di localStorage
-    //     if (spisId) localStorage.setItem("spis_id", spisId);
-      
-    //     if (nextStep === "spps") {
-    //       localStorage.setItem("spps_doc_no", docNo);
-    //       window.location.href = `/document-create?step=2&spis_id=${spisId}&doc_no=${encodeURIComponent(docNo)}`;
-    //     } else if (nextStep === "spqs") {
-    //       localStorage.setItem("spqs_doc_no", docNo);
-    //       window.location.href = `/document-create?step=3&spis_id=${spisId}&doc_no=${encodeURIComponent(docNo)}`;
-    //     }
-    // };
+    };
     
     const getStatusBadge = (status) => {
         switch (status) {

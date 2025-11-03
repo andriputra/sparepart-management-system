@@ -2,9 +2,21 @@ import { FiCheckSquare, FiSquare } from "react-icons/fi";
 
 export default function SpisInspectionDetail({ data }) {
     
-    const partMaterial = Array.isArray(data.part_material)
-        ? data.part_material
-        : JSON.parse(data.part_material || "[]");
+    let partMaterial = [];
+    try {
+        if (Array.isArray(data.part_material)) {
+            partMaterial = data.part_material;
+        } else if (typeof data.part_material === "string") {
+            // Try parsing twice if needed
+            const parsedOnce = JSON.parse(data.part_material);
+            partMaterial = Array.isArray(parsedOnce)
+            ? parsedOnce
+            : JSON.parse(parsedOnce);
+        }
+    } catch {
+        partMaterial = [];
+    }
+
     const materials = ["Rubber", "Metal", "Plastic", "Glass", "Other"];
     const hasMaterial = (material) => partMaterial.includes(material);
     const otherMaterials = partMaterial.filter(

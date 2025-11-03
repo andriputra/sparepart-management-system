@@ -85,7 +85,9 @@ router.get("/last-docno", async (req, res) => {
     }
 });
 
-router.post( "/", upload.fields([
+router.post(
+  "/",
+  upload.fields([
     { name: "photo1", maxCount: 1 },
     { name: "photo2", maxCount: 1 },
     { name: "part_images", maxCount: 8 },
@@ -117,19 +119,23 @@ router.post( "/", upload.fields([
         return res.status(400).json({ error: "Missing user_id" });
       }
 
-      const sanitizePhotoUrl = (url) => {
+      // Helper to remove protocol and host from a URL, returning only the relative path
+      const stripBaseUrl = (url) => {
         if (!url || typeof url !== "string") return null;
+        // Remove blob: URLs or empty
         if (url.startsWith("blob:")) return null;
-        return url;
+        // Remove protocol and host (e.g. http://127.0.0.1:5050)
+        return url.replace(/^https?:\/\/[^/]+/, "");
       };
-      
+
+      // Uploaded file always uses relative path
       const photo1Path = req.files?.photo1
-        ? `/uploads/spis/${req.files.photo1[0].filename}`
-        : sanitizePhotoUrl(req.body.photo1_url);
-      
+        ? stripBaseUrl(`/uploads/spis/${req.files.photo1[0].filename}`)
+        : stripBaseUrl(req.body.photo1_url);
+
       const photo2Path = req.files?.photo2
-        ? `/uploads/spis/${req.files.photo2[0].filename}`
-        : sanitizePhotoUrl(req.body.photo2_url);
+        ? stripBaseUrl(`/uploads/spis/${req.files.photo2[0].filename}`)
+        : stripBaseUrl(req.body.photo2_url);
 
       // === Parse JSON fields
       const partMaterialJSON =
@@ -153,8 +159,8 @@ router.post( "/", upload.fields([
       for (let i = 0; i < Math.max(uploadedFiles.length, imageUrls.length); i++) {
         combinedImages.push({
           url: uploadedFiles[i]
-            ? `/uploads/spis/${uploadedFiles[i].filename}`
-            : imageUrls[i] || null,
+            ? stripBaseUrl(`/uploads/spis/${uploadedFiles[i].filename}`)
+            : stripBaseUrl(imageUrls[i] || null),
           description: imageDescs[i] || "",
         });
       }
