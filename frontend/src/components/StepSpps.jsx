@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { setSppsData } from "../store/sppsSlice";
 import api from "../api/axios";
 import { toast } from "react-toastify";
@@ -20,6 +20,7 @@ const generateDocNo = async () => {
 
 export default function StepSpps({ onNext, onPrev, initialData }) {
   const dispatch = useDispatch();
+  const sppsDataFromStore = useSelector((state) => state.spps.data);
   const loadedRef = useRef(false);
 
   const defaultData = {
@@ -57,6 +58,15 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         }
       : {}),
   });
+
+  useEffect(() => {
+    if (sppsDataFromStore && Object.keys(sppsDataFromStore).length > 0) {
+      setData((prev) => ({
+        ...prev,
+        ...sppsDataFromStore,
+      }));
+    }
+  }, [sppsDataFromStore]);
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
@@ -183,7 +193,10 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
   }, [initialData]);
 
   useEffect(() => {
-    dispatch(setSppsData(data));
+    const serializableData = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => !(value instanceof File))
+    );
+    dispatch(setSppsData(serializableData));
   }, [data, dispatch]);
 
   const handleChange = (e) => {

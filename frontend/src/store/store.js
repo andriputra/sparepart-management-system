@@ -30,10 +30,9 @@ const appReducer = combineReducers({
 
 // 🧹 Reducer utama dengan kemampuan reset semua data
 const rootReducer = (state, action) => {
-  // Kalau user logout atau submit terakhir, hapus semua state redux
   if (action.type === "RESET_ALL_DOCUMENTS") {
-    storage.removeItem("persist:root"); // bersihkan data persist
-    state = undefined; // reset state redux ke awal
+    storage.removeItem("persist:root");
+    state = undefined;
   }
   return appReducer(state, action);
 };
@@ -45,7 +44,16 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER, 
+          "spis/setSpisData", 
+          "spps/setSppsData", 
+          "spqs/setSpqsData"
+        ],
+        ignoredPaths: [
+          "spis.form",
+          "spps.form",
+          "spqs.form"
+        ],
       },
     }),
 });
