@@ -63,14 +63,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        {/* <Route 
-          path="/document/view/:doc_no" 
-          element={
-            <ProtectedRoute>
-              <SpisView />
-            </ProtectedRoute>
-          } 
-        /> */}
         <Route 
           path="/document/view/:type/:doc_no" 
           element={

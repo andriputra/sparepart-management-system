@@ -213,16 +213,33 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
       toast.error("Failed to save draft");
     }
   };
-  
+
   const handleSubmit = async () => {
+    // Required fields: doc_no, date, part_number, part_description, supplier, criteria.package_dimension, criteria.weight, criteria.material
+    const requiredFields = [
+      { value: data.doc_no, name: "doc_no" },
+      { value: data.date, name: "date" },
+      { value: data.part_number, name: "part_number" },
+      { value: data.part_description, name: "part_description" },
+      { value: data.supplier, name: "supplier" },
+      { value: data.criteria.package_dimension, name: "criteria.package_dimension" },
+      { value: data.criteria.weight, name: "criteria.weight" },
+      { value: data.criteria.material, name: "criteria.material" },
+    ];
+    const hasEmptyRequired = requiredFields.some(
+      (f) => f.value === undefined || f.value === null || f.value === ""
+    );
+    if (hasEmptyRequired) {
+      toast.error("Harap isi semua field yang wajib diisi (*)");
+      return;
+    }
     try {
       const userId = localStorage.getItem("user_id");
       const spisId = localStorage.getItem("spis_id");
-  
+
       if (!userId) return toast.error("Please login first.");
       if (!spisId) return toast.error("SPIS ID tidak ditemukan. Silakan isi SPIS dulu.");
-  
-      // --- Pilih field yang akan dikirim, hindari event/DOM
+      
       const safePayload = {
         user_id: userId,
         spis_id: spisId,
@@ -240,12 +257,12 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         photo1_url: data.photo1_url,
         photo2_url: data.photo2_url,
       };
-  
+
       await api.post("/spqs", safePayload);
-  
+
       toast.success("SPQS submitted successfully!");
       clearDocuments();
-  
+
       // Hapus storage lama
       [
         "spis_doc_no",
@@ -258,7 +275,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         "spps_id",
         "spqs_id",
       ].forEach((k) => localStorage.removeItem(k));
-  
+
       setData(defaultData);
       setShowSuccessModal(true);
       localStorage.setItem("trigger_new_spis_doc", "1");
@@ -273,14 +290,17 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
       {/* Header Info */}
       <div className="grid grid-cols-2 gap-4">
         {[
-          { label: "Doc No", name: "doc_no", type: "text", readOnly: true },
-          { label: "Date", name: "date", type: "date", readOnly: true },
-          { label: "Part Number", name: "part_number", type: "text", readOnly: true },
-          { label: "Supplier", name: "supplier", type: "text", readOnly: true },
-          { label: "Part Description", name: "part_description", type: "text", readOnly: true },
+          { label: "Doc No", name: "doc_no", type: "text", readOnly: true, required: true },
+          { label: "Date", name: "date", type: "date", readOnly: true, required: true },
+          { label: "Part Number", name: "part_number", type: "text", readOnly: true, required: true },
+          { label: "Supplier", name: "supplier", type: "text", readOnly: true, required: true },
+          { label: "Part Description", name: "part_description", type: "text", readOnly: true, required: true },
         ].map((f) => (
           <div key={f.name}>
-            <label className="block text-sm mb-1">{f.label}</label>
+            <label className="block text-sm mb-1">
+              {f.label}
+              {f.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
             <input
               type={f.type}
               name={f.name}
@@ -322,52 +342,61 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         <h3 className="font-semibold mb-2">Quality Criteria</h3>
         <div className="grid grid-cols-2 gap-4">
           {["package_dimension", "weight", "material", "finishing", "function", "completeness"].map(
-            (crit) => (
-              <div key={crit} className="border p-3 rounded">
-                <label className="block text-sm font-semibold mb-1 capitalize">{crit}</label>
-                <div className="flex items-center gap-2 mb-2">
+            (crit) => {
+              // Only these are required: package_dimension, weight, material
+              const requiredCriteria = ["package_dimension", "weight", "material"];
+              return (
+                <div key={crit} className="border p-3 rounded">
+                  <label className="block text-sm font-semibold mb-1 capitalize">
+                    {crit}
+                    {requiredCriteria.includes(crit) && (
+                      <span className="text-red-500 ml-1">*</span>
+                    )}
+                  </label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      name={`${crit}_ok`}
+                      checked={data.criteria[`${crit}_ok`] || false}
+                      onChange={(e) =>
+                        setData((prev) => ({
+                          ...prev,
+                          criteria: {
+                            ...prev.criteria,
+                            [`${crit}_ok`]: e.target.checked,
+                          },
+                        }))
+                      }
+                    />
+                    <span className="text-sm text-gray-700">Sesuai spesifikasi</span>
+                  </div>
                   <input
-                    type="checkbox"
-                    name={`${crit}_ok`}
-                    checked={data.criteria[`${crit}_ok`] || false}
+                    type="text"
+                    name={crit}
+                    value={data.criteria[crit]}
+                    onChange={handleChange}
+                    readOnly
+                    className="border p-2 w-full rounded mb-2 bg-gray-100 text-gray-700"
+                  />
+                  <input
+                    type="text"
+                    name={`${crit}_remark`}
+                    value={data.criteria[`${crit}_remark`] || ""}
                     onChange={(e) =>
                       setData((prev) => ({
                         ...prev,
                         criteria: {
                           ...prev.criteria,
-                          [`${crit}_ok`]: e.target.checked,
+                          [`${crit}_remark`]: e.target.value,
                         },
                       }))
                     }
+                    className="border p-2 w-full rounded"
+                    placeholder="Keterangan (jika tidak sesuai)"
                   />
-                  <span className="text-sm text-gray-700">Sesuai spesifikasi</span>
                 </div>
-                <input
-                  type="text"
-                  name={crit}
-                  value={data.criteria[crit]}
-                  onChange={handleChange}
-                  readOnly
-                  className="border p-2 w-full rounded mb-2 bg-gray-100 text-gray-700"
-                />
-                <input
-                  type="text"
-                  name={`${crit}_remark`}
-                  value={data.criteria[`${crit}_remark`] || ""}
-                  onChange={(e) =>
-                    setData((prev) => ({
-                      ...prev,
-                      criteria: {
-                        ...prev.criteria,
-                        [`${crit}_remark`]: e.target.value,
-                      },
-                    }))
-                  }
-                  className="border p-2 w-full rounded"
-                  placeholder="Keterangan (jika tidak sesuai)"
-                />
-              </div>
-            )
+              );
+            }
           )}
         </div>
       </div>

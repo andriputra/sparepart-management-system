@@ -1,4 +1,6 @@
 import { useRef, useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { setSppsData } from "../store/sppsSlice";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 import PartImageUpload from "./PartImageUpload";
@@ -17,6 +19,7 @@ const generateDocNo = async () => {
 };
 
 export default function StepSpps({ onNext, onPrev, initialData }) {
+  const dispatch = useDispatch();
   const loadedRef = useRef(false);
 
   const defaultData = {
@@ -28,7 +31,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     qty: "",
     part_weight: "",
     part_dimension: "",
-    detail_parts: "",
+    detail_part: "",
     created_by: "",
     approved_by: "",
     package_material: "",
@@ -46,7 +49,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
           part_number: initialData.part_number,
           supplier: initialData.supplier,
           part_description: initialData.part_description,
-          detail_parts: initialData.detail_part,
+          detail_part: initialData.detail_part,
           part_weight: initialData.inspection?.weight,
           part_dimension: initialData.inspection?.package_dimension,
           created_by: initialData.name,
@@ -57,6 +60,17 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
+      let parsedInspection = {};
+      try {
+        if (typeof initialData.inspection === "string") {
+          parsedInspection = JSON.parse(initialData.inspection);
+        } else if (typeof initialData.inspection === "object" && initialData.inspection !== null) {
+          parsedInspection = initialData.inspection;
+        }
+      } catch (err) {
+        console.warn("Failed to parse inspection JSON:", err);
+      }
+  
       setData((prev) => ({
         ...prev,
         ...defaultData,
@@ -66,8 +80,8 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         supplier: initialData.supplier || prev.supplier,
         part_description: initialData.part_description || prev.part_description,
         detail_parts: initialData.detail_part || prev.detail_parts,
-        part_weight: initialData.inspection?.weight || prev.part_weight,
-        part_dimension: initialData.inspection?.package_dimension || prev.part_dimension,
+        part_weight: parsedInspection.weight || prev.part_weight,
+        part_dimension: parsedInspection.package_dimension || prev.part_dimension,
         created_by: initialData.name || prev.created_by,
         illustration_part:
           initialData.photo1_url || initialData.photo1 || prev.illustration_part,
@@ -90,18 +104,6 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     initDocNo();
   }, []);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("spps_form_data");
-    const currentDocNo = localStorage.getItem("spis_doc_no");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.doc_no === currentDocNo) {
-        setData(parsed);
-      } else {
-        localStorage.removeItem("spps_form_data"); 
-      }
-    }
-  }, []);
   
   useEffect(() => {
     try {
@@ -169,7 +171,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         part_description: initialData.part_description || "",
         part_weight: initialData.inspection?.weight || "",
         part_dimension: initialData.inspection?.package_dimension || "",
-        detail_parts: initialData.detail_part || "",
+        detail_part: initialData.detail_part || "",
         created_by: initialData.name || "",
         illustration_part:
           initialData.photo1_url ||
@@ -179,6 +181,10 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       return updated;
     });
   }, [initialData]);
+
+  useEffect(() => {
+    dispatch(setSppsData(data));
+  }, [data, dispatch]);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -214,17 +220,37 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
   };
 
   const handleNext = async () => {
+    dispatch(setSppsData(data));
+    // Validasi field required sebelum lanjut
+    const requiredFields = [
+      "doc_no",
+      "date",
+      "part_number",
+      "supplier",
+      "part_description",
+      "detail_part",
+      "part_weight",
+      "part_dimension",
+      "qty"
+    ];
+    const isEmpty = requiredFields.some(
+      (field) => !data[field] || (typeof data[field] === "string" && data[field].trim() === "")
+    );
+    if (isEmpty) {
+      toast.error("Harap isi semua field yang wajib diisi (*).");
+      return;
+    }
     try {
       const formData = new FormData();
       const userId = localStorage.getItem("user_id");
       const spisId = localStorage.getItem("spis_id");
       const existingSppsId = localStorage.getItem("spps_id");
-  
+
       if (!spisId) {
         toast.error("SPIS ID tidak ditemukan. Silakan mulai dari Step 1 (SPIS).");
         return;
       }
-  
+
       // 🔹 Hanya field yang memang dikirim ke tabel SPPS
       const allowedFields = [
         "doc_no",
@@ -243,37 +269,37 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         "status",
         "approved_by",
       ];
-  
+
       allowedFields.forEach((key) => {
         if (data[key] !== undefined && data[key] !== null) {
           formData.append(key, data[key]);
         }
       });
-  
+
       // 🔹 Upload file (package, illustration, result)
       for (let i = 0; i < 4; i++) {
         if (data[`package_${i}`] instanceof File) {
           formData.append(`package_${i}`, data[`package_${i}`]);
         }
       }
-  
+
       for (let i = 0; i < 2; i++) {
         if (data[`package_illustration_${i}`] instanceof File) {
           formData.append(`package_illustration_${i}`, data[`package_illustration_${i}`]);
         }
       }
-  
+
       if (data.result_illustration instanceof File) {
         formData.append("result_illustration", data.result_illustration);
       }
-  
+
       // Tambahkan hubungan SPIS dan User
       formData.append("spis_id", spisId);
       formData.append("user_id", userId);
       formData.append("status", "submitted");
 
       let response;
-  
+
       if (existingSppsId) {
         // 🟡 Jika sudah pernah dibuat → UPDATE
         response = await api.put(`/spps/${existingSppsId}`, formData, {
@@ -285,17 +311,19 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         response = await api.post("/spps", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-  
+
         // Simpan id SPPS ke localStorage untuk referensi update berikutnya
         if (response.data?.id) {
           localStorage.setItem("spps_id", response.data.id);
         }
-  
+
         toast.success("SPPS created successfully!");
       }
-  
+
+      // Dispatch to redux after successful API response, before onNext
+      dispatch(setSppsData(data));
       onNext({ ...data, spps_id: response?.data?.id || existingSppsId });
-      
+
     } catch (err) {
       console.error("Error saving SPPS:", err);
       toast.error("Failed to save SPPS");
@@ -312,13 +340,19 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
           { label: "Part Number", name: "part_number", type: "text", readOnly: true },
           { label: "Supplier", name: "supplier", type: "text", readOnly: true },
           { label: "Part Description", name: "part_description", type: "text", readOnly: true },
-          { label: "Detail Parts", name: "detail_parts", type: "text", readOnly: true },
+          { label: "Detail Parts", name: "detail_part", type: "text", readOnly: true },
           { label: "Part Weight (Kg)", name: "part_weight", type: "text", readOnly: true },
           { label: "Part Dimension (P X L X T)", name: "part_dimension", type: "text", readOnly: true },
           { label: "Qty", name: "qty", type: "number" }
         ].map((f) => (
           <div key={f.name}>
-            <label className="block text-sm mb-1">{f.label}</label>
+            <label className="block text-sm mb-1">
+              {f.label}
+              {/* Tambahkan asterisk pada semua field kecuali Package Material/Code/Detail */}
+              {["doc_no", "date", "part_number", "supplier", "part_description", "detail_part", "part_weight", "part_dimension", "qty"].includes(f.name) && (
+                <span className="text-red-500">*</span>
+              )}
+            </label>
             <input
               type={f.type}
               name={f.name}
@@ -328,6 +362,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
               className={`border p-2 w-full rounded ${
                 f.readOnly ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""
               }`}
+              required={["doc_no", "date", "part_number", "supplier", "part_description", "detail_part", "part_weight", "part_dimension", "qty"].includes(f.name)}
             />
           </div>
         ))}

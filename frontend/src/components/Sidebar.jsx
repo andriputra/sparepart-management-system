@@ -115,12 +115,12 @@ const navigate = useNavigate();
         {/* ✅ Modular Logout Modal */}
         {showLogoutModal && (
             <ModalConfirm
-            title="Konfirmasi Logout"
-            message="Apakah Anda yakin ingin keluar dari aplikasi?"
-            confirmText="Ya, Logout"
-            cancelText="Batal"
-            onConfirm={handleLogout}
-            onCancel={() => setShowLogoutModal(false)}
+                title="Konfirmasi Logout"
+                message="Apakah Anda yakin ingin keluar dari aplikasi?"
+                confirmText="Ya, Logout"
+                cancelText="Batal"
+                onConfirm={handleLogout}
+                onCancel={() => setShowLogoutModal(false)}
             />
         )}
         </>

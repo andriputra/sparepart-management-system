@@ -53,6 +53,20 @@ export default function StepSpis({ onNext, initialData }) {
 
   // 🔹 Sinkronisasi state lokal dan Redux
   const [data, setData] = useState(initialData && Object.keys(initialData).length > 0 ? initialData : spis || defaultData);
+  
+  // const images = Array.isArray(data.part_images)
+  // ? data.part_images
+  // : typeof data.part_images === "string" && data.part_images.startsWith("[")
+  // ? JSON.parse(data.part_images)
+  // : [];
+  const images = Array.isArray(data.part_images)
+    ? data.part_images
+    : data.part_images
+    ? JSON.parse(data.part_images)
+    : [];
+  images.map((img) => (
+    <img key={img} src={img} alt="Part" />
+  ));
 
   useEffect(() => {
     if (spis && Object.keys(spis).length > 0) {
@@ -129,96 +143,6 @@ export default function StepSpis({ onNext, initialData }) {
     };
   
     fetchInitialData();
-  }, []);
-
-  // 🔹 Load full_name user yang login
-  useEffect(() => {
-    const fetchUserName = async () => {
-      try {
-        const userId = localStorage.getItem("user_id");
-        if (!userId) return;
-
-        // Ambil info user dari backend
-        const res = await api.get(`/auth/user/${userId}`);
-        const fullName = res.data?.fullname || "";
-
-        setData((prev) => ({ ...prev, created_by: fullName }));
-      } catch (err) {
-        console.error("Failed to fetch user name:", err);
-      }
-    };
-
-    fetchUserName();
-  }, []);
-  
-  // ✅ Load draft terakhir user
-  useEffect(() => {
-    const userId = localStorage.getItem("user_id");
-    if (userId && !loadedRef.current) {
-      loadedRef.current = true;
-    
-      const submittedDocNo = localStorage.getItem("spis_doc_no");
-      const submittedId = localStorage.getItem("spis_id");
-    
-      // ⚡ Abaikan jika sudah pernah submit (punya doc_no & id)
-      if (submittedDocNo && submittedId) {
-        console.log("✅ SPIS sudah disubmit, abaikan draft lama");
-        return;
-      }
-      api.get(`/spis/draft/${userId}`).then((res) => {
-        if (res.data) {
-          const draft = res.data;
-
-          const existingSpisDocNo = localStorage.getItem("spis_doc_no");
-          if (existingSpisDocNo && existingSpisDocNo === draft.doc_no) {
-            console.log("Draft diabaikan karena sudah disubmit");
-            return;
-          }
-          // 🧠 Pastikan part_images dikonversi ke format array [{ file, url, description }]
-          let parsedImages = [];
-          try {
-            if (typeof draft.part_images === "string") {
-              parsedImages = JSON.parse(draft.part_images);
-            } else if (Array.isArray(draft.part_images)) {
-              parsedImages = draft.part_images;
-            }
-          } catch (err) {
-            console.error("Failed to parse part_images:", err);
-          }
-      
-          const formattedImages = parsedImages.map((img) => ({
-            file: null,
-            url: img.url || img.photo_url || img.file_url || "",
-            description: img.description || "",
-          }));
-      
-          setData((prev) => ({
-            ...prev,
-            ...draft,
-            part_material: draft.part_material || [],
-            inspection: { ...prev.inspection, ...(draft.inspection || {}) },
-            part_images: formattedImages,
-          }));
-      
-          toast.info("Loaded your saved draft.");
-        }
-      });
-    }
-  }, []);
-
-  // 🔹 Load data dari localStorage agar tidak hilang saat klik Back
-  useEffect(() => {
-    const savedForm = localStorage.getItem("spis_form_data");
-    if (savedForm) {
-      const parsed = JSON.parse(savedForm);
-      setData((prev) => ({
-        ...prev,
-        ...parsed,
-        inspection: { ...prev.inspection, ...(parsed.inspection || {}) },
-      }));
-      dispatch(setSpisData(parsed));
-      console.log("✅ Loaded local SPIS form data (from localStorage)");
-    }
   }, []);
 
   // 🔹 Handle perubahan input biasa & file
@@ -657,7 +581,7 @@ export default function StepSpis({ onNext, initialData }) {
 
       {/* Material */}
       <div className="mt-6">
-        <h3 className="font-semibold mb-2">Part Material</h3>
+        <h3 className="font-semibold mb-2">Part Material <span className="text-red-500">*</span></h3> 
           {["Rubber", "Metal", "Plastic", "Glass", "Other"].map((m) => (
           <label key={m} className="mr-4 inline-flex items-center">
             <input
@@ -666,6 +590,7 @@ export default function StepSpis({ onNext, initialData }) {
               checked={data.part_material?.includes(m)}
               onChange={handleMaterialChange}
               className="mr-1"
+              required
             />
             {m}
           </label>
@@ -710,7 +635,8 @@ export default function StepSpis({ onNext, initialData }) {
               suffix = "kg";
             }
 
-            const isNumeric = ["length", "width", "height", "weight", "package_dimension"].includes(field);
+            // Set input type to number for length, width, height, weight
+            const isNumberType = ["length", "width", "height", "weight"].includes(field);
             return (
               <div key={field}>
                 <label className="block capitalize mb-1 text-sm">
@@ -719,7 +645,7 @@ export default function StepSpis({ onNext, initialData }) {
 
                 <div className="relative">
                   <input
-                    type="text"
+                    type={isNumberType ? "number" : "text"}
                     name={field}
                     value={data.inspection[field]}
                     onChange={handleInspectionChange}

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../layouts/DashboardLayout";
 import api from "../api/axios";
 import { toast } from "react-toastify";
-import { FaEdit, FaEye, FaFilePdf, FaArrowRight, FaSearch, FaAngleDoubleLeft, FaAngleDoubleRight, FaTrashAlt } from "react-icons/fa";
+import {FaFilePdf, FaArrowRight, FaSearch, FaAngleDoubleLeft, FaAngleDoubleRight, FaTrashAlt, FaCheck } from "react-icons/fa";
 import ModalConfirm from "../components/ModalConfirm";
 export default function SparepartList() {
     const [spareparts, setSpareparts] = useState([]);
@@ -59,14 +58,6 @@ export default function SparepartList() {
 
     console.log("Filtered Data:", currentItems);
 
-    // const handleContinue = (docNo, nextStep) => {
-    //     localStorage.setItem("spis_doc_no", docNo);
-    //     if (nextStep === "spps") {
-    //     window.location.href = `/document-create?step=2`;
-    //     } else if (nextStep === "spqs") {
-    //     window.location.href = `/document-create?step=3`;
-    //     }
-    // };
     const handleContinue = (docNo, nextStep) => {
         if (!docNo) {
           toast.error("Tidak ada dokumen draft untuk dilanjutkan!");
@@ -81,7 +72,24 @@ export default function SparepartList() {
           window.location.href = `/document-create?step=3&doc_no=${encodeURIComponent(docNo)}`;
         }
       };
-
+    // const handleContinue = (docNo, nextStep, spisId) => {
+    //     if (!docNo) {
+    //       toast.error("Tidak ada dokumen draft untuk dilanjutkan!");
+    //       return;
+    //     }
+      
+    //     // simpan ID SPIS di localStorage
+    //     if (spisId) localStorage.setItem("spis_id", spisId);
+      
+    //     if (nextStep === "spps") {
+    //       localStorage.setItem("spps_doc_no", docNo);
+    //       window.location.href = `/document-create?step=2&spis_id=${spisId}&doc_no=${encodeURIComponent(docNo)}`;
+    //     } else if (nextStep === "spqs") {
+    //       localStorage.setItem("spqs_doc_no", docNo);
+    //       window.location.href = `/document-create?step=3&spis_id=${spisId}&doc_no=${encodeURIComponent(docNo)}`;
+    //     }
+    // };
+    
     const getStatusBadge = (status) => {
         switch (status) {
         case "draft":
@@ -110,7 +118,6 @@ export default function SparepartList() {
         if (!selectedDocNo) return;
     
         try {
-            toast.info("Menghapus dokumen...");
             await api.delete(`/spareparts/${encodeURIComponent(selectedDocNo)}`);
             toast.success(`Dokumen ${selectedDocNo} berhasil dihapus.`);
             fetchSpareparts();
@@ -134,7 +141,6 @@ export default function SparepartList() {
         if (!selectedApproveDocNo) return;
     
         try {
-            toast.info("Menyetujui dokumen...");
             await api.put(`/spareparts/approve/${encodeURIComponent(selectedApproveDocNo)}`, {
                 approved_by: localStorage.getItem("user_name") || "Approver",
             });
@@ -190,7 +196,8 @@ export default function SparepartList() {
                                     <th className="px-3 py-3 border text-center">SPIS</th>
                                     <th className="px-3 py-3 border text-center">SPPS</th>
                                     <th className="px-3 py-3 border text-center">SPQS</th>
-                                    {/* <th className="px-3 py-3 border text-center">Created at</th> */}
+                                    <th className="px-3 py-3 border text-center">Document Date</th>
+                                    <th className="px-3 py-3 border text-center">Approved at</th>
                                     <th colSpan={2} className="px-3 py-3 border text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -215,17 +222,6 @@ export default function SparepartList() {
                                         className={`hover:bg-gray-50 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                                     >
                                         <td className="px-3 py-2 border text-center">{startIndex + index + 1}</td>
-                                        {/* <td className="px-3 py-2 border">
-                                            {item.photo1 ? (
-                                                <img
-                                                    src={`${serverUrl}${item.photo1}`}
-                                                    alt={item.part_number}
-                                                    className="w-16 h-16 object-cover rounded"
-                                                />
-                                            ) : (
-                                                <span className="text-gray-400">No Image</span>
-                                            )}
-                                        </td> */}
                                         <td className="px-3 py-2 border">{item.part_number}</td>
                                         <td className="px-3 py-2 border">{item.created_by}</td>
                                         <td className="px-3 py-2 border">{item.approved_by || "-"}</td>
@@ -257,180 +253,100 @@ export default function SparepartList() {
                                                 </td>
                                             );
                                         })}
-
+                                        <td className="px-3 py-2 border text-center"> {new Date(item.updated_at).toLocaleDateString("id-ID")}</td>
                                         {/* === ACTION BUTTONS === */}
                                         <td className="px-3 py-2 border text-center">
                                             <div className="flex justify-center flex-wrap gap-2">
                                                 {(() => {
+                                                    if (isAnySubmitted && !isAllSubmitted) {
+                                                        return (
+                                                        <>
+                                                            {item.spps_status === "draft" && item.spis_status === "submitted" && (
+                                                                <button
+                                                                    // onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps")}
+                                                                    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps", item.spis_id)}
+                                                                    disabled={role === "viewer" || role === "approval"}
+                                                                    className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                                    role === "viewer" || role === "approval"
+                                                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                        : "bg-green-600 hover:bg-green-700 text-white"
+                                                                    }`}
+                                                                    title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPPS"}
+                                                                >
+                                                                    <FaArrowRight /> SPPS
+                                                                </button>
+                                                            )}
 
-                                                // Semua draft → hanya SPIS aktif
-                                                if (isAllDraft) {
+                                                            {item.spqs_status === "draft" && item.spps_status === "submitted" && (
+                                                                <button
+                                                                    // onClick={() => handleContinue(item.spqs_doc_no || item.spps_doc_no, "spqs")}
+                                                                    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps", item.spis_id)}
+                                                                    disabled={role === "viewer" || role === "approval"}
+                                                                    className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                                    role === "viewer" || role === "approval"
+                                                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                        : "bg-green-600 hover:bg-green-700 text-white"
+                                                                    }`}
+                                                                    title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPQS"}
+                                                                >
+                                                                    <FaArrowRight /> SPQS
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                        );
+                                                    }
+
+                                                    // Semua submitted
+                                                    if (isAllSubmitted) {
+                                                        return (
+                                                        <>
+                                                            <div className="py-1 px-2 rounded bg-gray-200 text-gray-500">
+                                                                Ready For Approval
+                                                            </div>
+
+                                                            {role === "approval" && (
+                                                                <button
+                                                                    onClick={() => confirmApprove(item.spis_doc_no)}
+                                                                    className="bg-red-300 hover:bg-red-700 hover:text-white text-red-800 px-3 py-1 rounded flex items-center gap-1"
+                                                                >
+                                                                    <FaFilePdf /> Approve
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                        );
+                                                    }
+
+                                                    // Semua completed → View + PDF + Label Approved
+                                                    if (isAllCompleted) {
+                                                        return (
+                                                            <div className="flex flex-row items-center gap-2">
+                                                                <div className="flex gap-2">
+                                                                    <div className="text-sm text-green-600 px-3 py-1 flex items-center gap-1">
+                                                                        <FaFilePdf /> Approved <FaCheck/>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    // Default
                                                     return (
-                                                    <>
-                                                        <button
-                                                            onClick={() => (window.location.href = `/document-create?step=1`)}
-                                                            className="bg-yellow-500 hover:bg-yellow-600 text-sm text-white px-3 py-1 rounded flex items-center gap-1"
-                                                        >
-                                                            <FaEdit /> SPIS
-                                                        </button>
-                                                        <button
-                                                            disabled
-                                                            className="bg-gray-300 text-gray-500 text-sm px-3 py-1 rounded flex items-center gap-1 cursor-not-allowed"
-                                                        >
-                                                            <FaArrowRight /> SPPS
-                                                        </button>
-                                                        <button
-                                                            disabled
-                                                            className="bg-gray-300 text-gray-500 text-sm px-3 py-1 rounded flex items-center gap-1 cursor-not-allowed"
-                                                            >
-                                                            <FaArrowRight /> SPQS
-                                                        </button>
-                                                    </>
-                                                    );
-                                                }
-
-                                                // Sebagian submitted tapi belum semua
-                                                if (isAnySubmitted && !isAllSubmitted) {
-                                                    return (
-                                                    <>
-                                                        {/* {item.spps_status === "draft" && item.spis_status === "submitted" && (
-                                                        <button
-                                                            onClick={() => handleContinue(item.doc_no, "spps")}
-                                                            disabled={role === "viewer" || role === "approval"}
-                                                            className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                role === "viewer" || role === "approval"
-                                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                : "bg-green-600 hover:bg-green-700 text-white"
-                                                            }`}
-                                                            title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lihat Dokumen"}
-                                                            >
-                                                            <FaArrowRight /> Lanjut SPPS
-                                                        </button>
-                                                        )}
-
-                                                        {item.spqs_status === "draft" && item.spps_status === "submitted" && (
+                                                        <>
                                                             <button
-                                                                onClick={() => handleContinue(item.doc_no, "spqs")}
+                                                                // onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spis")}
+                                                                onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps", item.spis_id)}
                                                                 disabled={role === "viewer" || role === "approval"}
                                                                 className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                    role === "viewer" || role === "approval"
+                                                                role === "viewer" || role === "approval"
                                                                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                                                     : "bg-green-600 hover:bg-green-700 text-white"
                                                                 }`}
-                                                                title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lihat Dokumen"}
-                                                                >
-                                                                <FaArrowRight /> Lanjut SPQS
-                                                            </button>
-                                                        )} */}
-                                                        {item.spps_status === "draft" && item.spis_status === "submitted" && (
-  <button
-    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps")}
-    disabled={role === "viewer" || role === "approval"}
-    className={`px-3 py-1 rounded flex items-center gap-1 ${
-      role === "viewer" || role === "approval"
-        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-        : "bg-green-600 hover:bg-green-700 text-white"
-    }`}
-    title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPPS"}
-  >
-    <FaArrowRight /> Lanjut SPPS
-  </button>
-)}
-
-{item.spqs_status === "draft" && item.spps_status === "submitted" && (
-  <button
-    onClick={() => handleContinue(item.spqs_doc_no || item.spps_doc_no, "spqs")}
-    disabled={role === "viewer" || role === "approval"}
-    className={`px-3 py-1 rounded flex items-center gap-1 ${
-      role === "viewer" || role === "approval"
-        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-        : "bg-green-600 hover:bg-green-700 text-white"
-    }`}
-    title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPQS"}
-  >
-    <FaArrowRight /> Lanjut SPQS
-  </button>
-)}
-                                                    </>
-                                                    );
-                                                }
-
-                                                // Semua submitted
-                                                if (isAllSubmitted) {
-                                                    return (
-                                                    <>
-                                                        <div className="py-1 px-2 rounded bg-gray-200 text-gray-500">
-                                                            Ready For Approval
-                                                        </div>
-
-                                                        {role === "approval" && (
-                                                            <button
-                                                                onClick={() => confirmApprove(item.spis_doc_no)}
-                                                                className="bg-red-300 hover:bg-red-700 hover:text-white text-red-800 px-3 py-1 rounded flex items-center gap-1"
+                                                                title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPIS"}
                                                             >
-                                                                <FaFilePdf /> Approve
+                                                                <FaArrowRight /> SPIS
                                                             </button>
-                                                        )}
-                                                    </>
+                                                        </>
                                                     );
-                                                }
-
-                                                // Semua completed → View + PDF + Label Approved
-                                                if (isAllCompleted) {
-                                                    return (
-                                                        <div className="flex flex-row items-center gap-2">
-                                                            <div className="flex gap-2">
-                                                                <div className="bg-red-500 hover:bg-red-600 text-sm text-white text-white px-3 py-1 rounded flex items-center gap-1">
-                                                                    <FaFilePdf /> Document Approved
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-
-                                                // Default
-                                                return (
-                                                    <>
-                                                    <button
-                                                        onClick={() => (window.location.href = `/document-create?step=1`)}
-                                                        className={`px-3 py-1 rounded flex items-center gap-1 text-white ${
-                                                        item.spis_status === "completed"
-                                                            ? "bg-green-600 hover:bg-green-700"
-                                                            : "bg-yellow-500 hover:bg-yellow-600"
-                                                        }`}
-                                                    >
-                                                        <FaEdit /> SPIS
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => handleContinue(item.doc_no, "spps")}
-                                                        disabled={item.spis_status !== "completed"}
-                                                        className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                        item.spps_status === "completed"
-                                                            ? "bg-green-600 hover:bg-green-700 text-white"
-                                                            : item.spis_status === "completed"
-                                                            ? "bg-blue-600 hover:bg-blue-700 text-white"
-                                                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                        }`}
-                                                    >
-                                                        <FaArrowRight /> SPPS
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => handleContinue(item.doc_no, "spqs")}
-                                                        disabled={item.spps_status !== "completed"}
-                                                        className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                        item.spqs_status === "completed"
-                                                            ? "bg-green-600 hover:bg-green-700 text-white"
-                                                            : item.spps_status === "completed"
-                                                            ? "bg-green-500 hover:bg-green-600 text-white"
-                                                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                        }`}
-                                                    >
-                                                        <FaArrowRight /> SPQS
-                                                    </button>
-                                                    </>
-                                                );
                                                 })()}
                                             </div>
                                         </td>

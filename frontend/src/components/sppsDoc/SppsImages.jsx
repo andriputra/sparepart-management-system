@@ -65,16 +65,16 @@ export default function SppsImages({ data }) {
                                 <div className="flex gap-3 justify-center items-center">
                                     <img
                                         src={result_illustration1}
-                                        alt="Result Package"
-                                        className="mx-auto h-40 object-contain mb-2"
+                                        alt="Result Package 1"
+                                        className="mx-auto h-32 object-contain mb-2"
                                     />
                                     <div className="text-gray-800 text-lg">
                                         <FaArrowRight/>
                                     </div>
                                     <img
                                         src={result_illustration2}
-                                        alt="Result Package"
-                                        className="mx-auto h-40 object-contain mb-2"
+                                        alt="Result Package 2"
+                                        className="mx-auto h-32 object-contain mb-2"
                                     />
                                 </div>
                             </td>

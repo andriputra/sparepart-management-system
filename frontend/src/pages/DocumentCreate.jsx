@@ -5,6 +5,7 @@ import StepSpqs from "../components/StepSpqs";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
+import api from "../api/axios";
 
 export default function DocumentCreate() {
     const [searchParams] = useSearchParams();
@@ -90,42 +91,50 @@ export default function DocumentCreate() {
         { id: 3, label: "SPQS - Spare Part Quality Sheet" },
     ];
 
-    // === Ambil data draft dari backend berdasarkan doc_no ===
-    const fetchExistingDraft = async (docNo) => {
+    const fetchExistingDraft = async (step) => {
         try {
-        const response = await fetch(`http://127.0.0.1:5050/api/spareparts/get_draft/${encodeURIComponent(docNo)}`);
-        if (!response.ok) {
-            throw new Error("Gagal mengambil data draft");
-        }
-    
-        const data = await response.json();
-        setFormData({
-            spis: data.spis || {},
-            spps: data.spps || {},
-            spqs: data.spqs || {},
-        });
-    
-        toast.info(`Draft ${docNo} berhasil dimuat.`);
-        } catch (error) {
-        console.error("Error fetching draft:", error);
-        toast.error("Gagal memuat data draft.");
+            const userId = localStorage.getItem("user_id");
+            const urlParams = new URLSearchParams(window.location.search);
+            const docNo = urlParams.get("doc_no");
+        
+            if (!userId) {
+                toast.error("User ID tidak ditemukan. Silakan login ulang.");
+                return;
+            }
+        
+            let endpoint = "";
+            if (docNo) {
+                if (step === 1) endpoint = `/spis/by-doc/${encodeURIComponent(docNo)}`;
+                if (step === 2) endpoint = `/spps/by-doc/${encodeURIComponent(docNo)}`;
+                if (step === 3) endpoint = `/spqs/by-doc/${encodeURIComponent(docNo)}`;
+            } else {
+                if (step === 1) endpoint = `/spis/latest/${userId}`;
+                if (step === 2) endpoint = `/spis/for-next/${userId}`; 
+                if (step === 3) endpoint = `/spps/for-next/${userId}`;
+            }
+        
+            const res = await api.get(endpoint);
+            if (!res.data) {
+                toast.info("Belum ada data tersimpan.");
+                return;
+            }
+        
+            const { doc_no, status, data } = res.data;
+            console.log("Loaded data:", doc_no, status, data);
+            setFormData((prev) => ({ ...prev, ...data }));
+            toast.success(`Data ${doc_no} berhasil dimuat`);
+        } catch (err) {
+            console.error("Error fetching draft:", err);
+            toast.error("Gagal mengambil data draft");
         }
     };
     
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const docNo = params.get("doc_no");
-        const storedDocNo =
-            docNo ||
-            localStorage.getItem("spps_doc_no") ||
-            localStorage.getItem("spqs_doc_no") ||
-            localStorage.getItem("spis_doc_no");
-      
-        if (storedDocNo) {
-            fetchExistingDraft(storedDocNo);
-        }
+        const urlParams = new URLSearchParams(window.location.search);
+        const step = parseInt(urlParams.get("step") || "1", 10);
+        fetchExistingDraft(step);
     }, []);
-
+    
     useEffect(() => {
             const userId = localStorage.getItem("user_id");
         if (userId) {
@@ -135,13 +144,17 @@ export default function DocumentCreate() {
     
     const fetchLatestDraft = async (userId) => {
         try {
-        const res = await api.get(`/spis/latest/${userId}`);
-        if (res.data) {
-            setFormData(res.data);
-            toast.info("Draft sebelumnya berhasil dimuat");
-        }
+            const res = await api.get(`/spis/latest/${userId}`);
+            if (res.data && res.data.data) {
+                    setFormData({
+                    spis: res.data.data,
+                    spps: {},
+                    spqs: {},
+                });
+                toast.info(`Draft ${res.data.doc_no} berhasil dimuat`);
+            }
         } catch (err) {
-        console.error("Error loading draft:", err);
+            console.error("Error loading draft:", err);
         }
     };
 

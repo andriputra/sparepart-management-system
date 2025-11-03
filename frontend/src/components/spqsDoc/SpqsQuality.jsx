@@ -31,44 +31,44 @@ export default function SpqsQuality({ data }) {
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">1</td>
                         <td className="border border-gray-500 p-1">Dimensi</td>
-                        <td className="border border-gray-500 p-1">Sesuai dengan standar kualitas</td>
-                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_dimension)}</td>
+                        <td className="border border-gray-500 p-1">{data.criteria_dimension_remark || 'Sesuai dengan standar kualitas'}</td>
+                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_dimension_ok)}</td>
                         <td className="border border-gray-500 p-1">{data.criteria_dimension || '-'}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">2</td>
                         <td className="border border-gray-500 p-1">Berat</td>
-                        <td className="border border-gray-500 p-1">Sesuai dengan standar kualitas</td>
-                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_weight)}</td>
+                        <td className="border border-gray-500 p-1">{data.criteria_weight_remark || 'Sesuai dengan standar kualitas'}</td>
+                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_weight_ok)}</td>
                         <td className="border border-gray-500 p-1">{data.criteria_weight || '-'} Kg</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">3</td>
                         <td className="border border-gray-500 p-1">Material</td>
-                        <td className="border border-gray-500 p-1">Sesuai dengan standar kualitas</td>
-                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_material)}</td>
+                        <td className="border border-gray-500 p-1">{data.criteria_material_remark || 'Sesuai dengan standar kualitas'}</td>
+                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_material_ok)}</td>
                         <td className="border border-gray-500 p-1">{data.criteria_material || '-'}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">4</td>
                         <td className="border border-gray-500 p-1">Finishing</td>
-                        <td className="border border-gray-500 p-1">Sesuai dengan standar kualitas</td>
-                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_finishing)}</td>
+                        <td className="border border-gray-500 p-1">{data.criteria_finishing_remark || 'Sesuai dengan standar kualitas'}</td>
+                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_finishing_ok)}</td>
                         <td className="border border-gray-500 p-1">{data.criteria_finishing || '-'}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">5</td>
                         <td className="border border-gray-500 p-1">Fungsi</td>
-                        <td className="border border-gray-500 p-1">Sesuai dengan standar kualitas</td>
-                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_function)}</td>
+                        <td className="border border-gray-500 p-1">{data.criteria_function_remark || 'Sesuai dengan standar kualitas'}</td>
+                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_function_ok)}</td>
                         <td className="border border-gray-500 p-1">{data.criteria_function || '-'}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">6</td>
                         <td className="border border-gray-500 p-1">Kelengkapan</td>
                         <td className="border border-gray-500 p-1">Sesuai dengan standar kualitas</td>
-                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_completeness)}</td>
-                        <td className="border border-gray-500 p-1">{data.criteria_completeness || '-'}</td>
+                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_completeness_ok)}</td>
+                        <td className="border border-gray-500 p-1">{data.criteria_completeness_remark || '-'}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">7</td>

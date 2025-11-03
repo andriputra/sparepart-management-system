@@ -36,14 +36,25 @@ router.post("/", async (req, res) => {
       finalDocNo = `IM/SPQS/${year}/${month}/${padded}`;
     }
 
-    // --- Normalize data ---
     const safeCriteria = {
       package_dimension: criteria.package_dimension || "",
+      package_dimension_ok: criteria.package_dimension_ok ? 1 : 0,
+      package_dimension_remark: criteria.package_dimension_remark || "",
       weight: criteria.weight || "",
+      weight_ok: criteria.weight_ok ? 1 : 0,
+      weight_remark: criteria.weight_remark || "",
       material: criteria.material || "",
+      material_ok: criteria.material_ok ? 1 : 0,
+      material_remark: criteria.material_remark || "",
       finishing: criteria.finishing || "",
+      finishing_ok: criteria.finishing_ok ? 1 : 0,
+      finishing_remark: criteria.finishing_remark || "",
       function: criteria.function || "",
+      function_ok: criteria.function_ok ? 1 : 0,
+      function_remark: criteria.function_remark || "",
       completeness: criteria.completeness || "",
+      completeness_ok: criteria.completeness_ok ? 1 : 0,
+      completeness_remark: criteria.completeness_remark || "",
     };
 
     const surface = criteria.surface || {};
@@ -66,34 +77,17 @@ router.post("/", async (req, res) => {
     // --- INSERT query lengkap ---
     await db.query(
       `INSERT INTO spqs (
-        spis_id,
-        user_id,
-        doc_no,
-        part_number,
-        date,
-        part_description,
-        supplier,
-        criteria_dimension,
-        criteria_weight,
-        criteria_material,
-        criteria_finishing,
-        criteria_function,
-        criteria_completeness,
-        surface_wear,
-        surface_damage,
-        surface_scratch,
-        surface_crack,
-        surface_corrosion,
-        surface_bend,
-        result,
-        comment,
-        created_by,
-        approved_by,
-        checked_by,
-        status,
-        data_json,
-        created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, NOW())`,
+        spis_id, user_id, doc_no, part_number, date, part_description, supplier,
+        criteria_dimension, criteria_dimension_ok, criteria_dimension_remark,
+        criteria_weight, criteria_weight_ok, criteria_weight_remark,
+        criteria_material, criteria_material_ok, criteria_material_remark,
+        criteria_finishing, criteria_finishing_ok, criteria_finishing_remark,
+        criteria_function, criteria_function_ok, criteria_function_remark,
+        criteria_completeness, criteria_completeness_ok, criteria_completeness_remark,
+        surface_wear, surface_damage, surface_scratch, surface_crack, surface_corrosion, surface_bend,
+        result, comment, created_by, approved_by, checked_by, status, data_json, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         spis_id,
         user_id,
@@ -103,11 +97,23 @@ router.post("/", async (req, res) => {
         part_description || "",
         supplier || "",
         safeCriteria.package_dimension,
+        safeCriteria.package_dimension_ok,
+        safeCriteria.package_dimension_remark,
         safeCriteria.weight,
+        safeCriteria.weight_ok,
+        safeCriteria.weight_remark,
         safeCriteria.material,
+        safeCriteria.material_ok,
+        safeCriteria.material_remark,
         safeCriteria.finishing,
+        safeCriteria.finishing_ok,
+        safeCriteria.finishing_remark,
         safeCriteria.function,
+        safeCriteria.function_ok,
+        safeCriteria.function_remark,
         safeCriteria.completeness,
+        safeCriteria.completeness_ok,
+        safeCriteria.completeness_remark,
         safeSurface.wear,
         safeSurface.damage,
         safeSurface.scratch,
@@ -119,7 +125,8 @@ router.post("/", async (req, res) => {
         safeCreatedBy,
         safeApprovedBy,
         safeCheckedBy,
-        JSON.stringify(req.body || {})
+        "submitted",
+        JSON.stringify(req.body || {}) // 🧩 inilah yang tadinya hilang!
       ]
     );
 
@@ -242,19 +249,47 @@ router.get('/:id', async (req, res) => {
 router.get("/latest/:user_id", async (req, res) => {
   const { user_id } = req.params;
   try {
-    // Ambil dokumen dengan status draft terakhir
     const [rows] = await db.query(
-      "SELECT * FROM spqs WHERE user_id = ? AND status = 'draft' ORDER BY updated_at DESC LIMIT 1",
+      "SELECT doc_no, status, data_json, updated_at FROM spqs WHERE user_id = ? AND status = 'draft' ORDER BY updated_at DESC LIMIT 1",
       [user_id]
     );
+
     if (rows.length === 0) {
       return res.json(null);
     }
-    res.json(rows[0]);
+
+    const row = rows[0];
+    let parsedData = {};
+    try {
+      parsedData = row.data_json ? JSON.parse(row.data_json) : {};
+    } catch (err) {
+      console.warn("⚠️ Failed to parse data_json for user", user_id);
+    }
+
+    res.json({
+      doc_no: row.doc_no,
+      status: row.status,
+      data: parsedData,
+      updated_at: row.updated_at,
+    });
   } catch (err) {
     console.error("Error fetching latest draft:", err);
     res.status(500).json({ error: "Failed to fetch draft" });
   }
 });
 
+
+// ✅ Get SPQS draft or data by spis_id
+router.get("/by-spis/:spis_id", async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM spqs WHERE spis_id = ?", [req.params.spis_id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "No SPQS found" });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Error fetching SPQS by spis_id:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 export default router;

@@ -267,7 +267,7 @@ router.post("/save-draft", async (req, res) => {
     if (!user_id) return res.status(400).json({ error: "Missing user_id" });
 
     await db.query(
-      "REPLACE INTO spis_draft (user_id, data_json, updated_at) VALUES (?, ?, NOW())",
+      "REPLACE INTO spis (user_id, data_json, updated_at) VALUES (?, ?, NOW())",
       [user_id, JSON.stringify(data)]
     );
 
@@ -357,19 +357,132 @@ router.get("/all", async (req, res) => {
 router.get("/latest/:user_id", async (req, res) => {
   const { user_id } = req.params;
   try {
-    // Ambil dokumen dengan status draft terakhir
     const [rows] = await db.query(
-      "SELECT * FROM spis WHERE user_id = ? AND status = 'draft' ORDER BY updated_at DESC LIMIT 1",
+      "SELECT doc_no, status, data_json, updated_at FROM spis WHERE user_id = ? AND status = 'draft' ORDER BY updated_at DESC LIMIT 1",
       [user_id]
     );
+
     if (rows.length === 0) {
       return res.json(null);
     }
-    res.json(rows[0]);
+
+    const row = rows[0];
+    let parsedData = {};
+    try {
+      parsedData = row.data_json ? JSON.parse(row.data_json) : {};
+    } catch (err) {
+      console.warn("⚠️ Failed to parse data_json for user", user_id);
+    }
+
+    res.json({
+      doc_no: row.doc_no,
+      status: row.status,
+      data: parsedData,
+      updated_at: row.updated_at,
+    });
   } catch (err) {
     console.error("Error fetching latest draft:", err);
     res.status(500).json({ error: "Failed to fetch draft" });
   }
 });
 
+// === GET /api/spis/for-next/:user_id ===
+// Ambil SPIS terakhir (draft atau submitted) untuk dilanjutkan ke SPPS
+router.get("/for-next/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+  try {
+    // Ambil draft dulu
+    const [draft] = await db.query(
+      "SELECT doc_no, status, data_json, updated_at FROM spis WHERE user_id = ? AND status = 'draft' ORDER BY updated_at DESC LIMIT 1",
+      [user_id]
+    );
+
+    if (draft.length > 0) {
+      return res.json({
+        doc_no: draft[0].doc_no,
+        status: draft[0].status,
+        data: JSON.parse(draft[0].data_json || "{}"),
+      });
+    }
+
+    // Kalau gak ada draft → ambil yang submitted terakhir
+    const [submitted] = await db.query(
+      "SELECT * FROM spis WHERE user_id = ? AND status = 'submitted' ORDER BY updated_at DESC LIMIT 1",
+      [user_id]
+    );
+    
+    if (submitted.length > 0) {
+      let parsedData = {};
+      try {
+        parsedData = submitted[0].data_json ? JSON.parse(submitted[0].data_json) : {};
+      } catch (e) {
+        console.warn("Failed to parse submitted data_json for user:", user_id);
+      }
+    
+      return res.json({
+        doc_no: submitted[0].doc_no,
+        status: submitted[0].status,
+        data: {
+          ...parsedData, // 🧠 include jika data_json ada
+          part_number: submitted[0].part_number,
+          supplier: submitted[0].supplier,
+          part_description: submitted[0].part_description,
+          detail_part: submitted[0].detail_part,
+          date: submitted[0].date,
+          code: submitted[0].code,
+          name: submitted[0].name,
+          department: submitted[0].department,
+          photo1: submitted[0].photo1,
+          photo2: submitted[0].photo2,
+        },
+      });
+    }
+
+    // Kalau tidak ada dua-duanya
+    res.json(null);
+  } catch (err) {
+    console.error("Error fetching SPIS for continuation:", err);
+    res.status(500).json({ error: "Failed to fetch SPIS for next step" });
+  }
+});
+
+// === GET /api/spis/by-doc/:doc_no ===
+// Ambil data SPIS berdasarkan nomor dokumen (dipakai jika user klik dari doc_no)
+router.get("/by-doc/:doc_no", async (req, res) => {
+  try {
+    const decodedDocNo = decodeURIComponent(req.params.doc_no);
+    const [rows] = await db.query("SELECT * FROM spis WHERE doc_no = ?", [decodedDocNo]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "SPIS not found" });
+    }
+
+    const data = rows[0];
+    let parsedData = {};
+    try {
+      parsedData = data.data_json ? JSON.parse(data.data_json) : {};
+    } catch (e) {
+      console.warn("⚠️ Failed to parse data_json for doc_no:", decodedDocNo);
+    }
+
+    res.json({
+      ...parsedData,
+      ...data,
+    });
+  } catch (err) {
+    console.error("Error fetching SPIS by doc_no:", err);
+    res.status(500).json({ error: "Failed to fetch SPIS by doc_no" });
+  }
+});
+
+router.get("/by-id/:id", async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM spis WHERE id = ?", [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: "SPIS not found" });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Error fetching SPIS by ID:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 export default router;
