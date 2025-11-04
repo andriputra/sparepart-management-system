@@ -3,6 +3,12 @@ import api from "../api/axios";
 import { toast } from "react-toastify";
 import { clearDocuments } from "../utils/clearDocuments";
 import { FaPlus } from "react-icons/fa";
+const BASE_URL = import.meta.env.VITE_SERVER_URL;
+const getFullImageUrl = (path) => {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  return `${BASE_URL}${path.startsWith("/") ? path : "/" + path}`;
+};
 
 const generateDocNo = async () => {
   try {
@@ -15,6 +21,15 @@ const generateDocNo = async () => {
     const month = String(now.getMonth() + 1).padStart(2, "0");
     return `IM/SPQS/${year}/${month}/00001`;
   }
+};
+const formatDate = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (isNaN(date)) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 export default function StepSpqs({ onPrev, onNext, initialData }) {
@@ -91,38 +106,51 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
     const loadSpisData = async () => {
       const spisId = localStorage.getItem("spis_id");
       if (!spisId) return;
-  
+
       try {
-        const res = await api.get(`/spis/${spisId}`);
+        const res = await api.get(`/spareparts/spis/by-id/${spisId}`);
         const spisData = res.data;
-  
+
         const inspection = typeof spisData.inspection === "string"
           ? JSON.parse(spisData.inspection)
           : spisData.inspection || {};
-  
+
         const materials = typeof spisData.part_material === "string"
           ? JSON.parse(spisData.part_material)
           : spisData.part_material || [];
-  
+
+          setData((prev) => ({
+            ...prev,
+            part_number: spisData.part_number || prev.part_number,
+            part_description: spisData.part_description || prev.part_description,
+            supplier: spisData.supplier || prev.supplier,
+            photo1_url: getFullImageUrl(spisData.photo1_url || spisData.photo1 || prev.photo1_url),
+            photo2_url: getFullImageUrl(spisData.photo2_url || spisData.photo2 || prev.photo2_url),
+            date: formatDate(spisData.date) || prev.date,
+            criteria: {
+              ...prev.criteria,
+              package_dimension:
+                inspection.package_dimension ||
+                `${inspection.length || 0} x ${inspection.width || 0} x ${inspection.height || 0}`,
+              weight: inspection.weight || prev.criteria.weight,
+              material: Array.isArray(materials)
+                ? materials.join(", ")
+                : materials || prev.criteria.material,
+              finishing: inspection.visual_condition || prev.criteria.finishing,
+              function: inspection.part_system || prev.criteria.function,
+              completeness: inspection.completeness || prev.criteria.completeness,
+            },
+          }));
+        // Isi otomatis photo1_url, photo2_url, material dari SPIS
         setData((prev) => ({
           ...prev,
-          part_number: spisData.part_number || "",
-          part_description: spisData.part_description || "",
-          supplier: spisData.supplier || "",
-          photo1_url: spisData.photo1_url || "",
-          photo2_url: spisData.photo2_url || "",
+          photo1_url: getFullImageUrl(spisData.photo1_url || spisData.photo1),
+photo2_url: getFullImageUrl(spisData.photo2_url || spisData.photo2),
           criteria: {
             ...prev.criteria,
-            package_dimension:
-              inspection.package_dimension ||
-              `${inspection.length || 0} x ${inspection.width || 0} x ${inspection.height || 0}`,
-            weight: inspection.weight || "",
             material: Array.isArray(materials)
               ? materials.join(", ")
               : materials || "",
-            finishing: inspection.visual_condition || "",
-            function: inspection.part_system || "",
-            completeness: inspection.completeness || "",
           },
         }));
       } catch (err) {
@@ -306,6 +334,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
               name={f.name}
               value={data[f.name]}
               onChange={handleChange}
+              readOnly={f.readOnly}
               className={`border p-2 w-full rounded ${
                 f.readOnly ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""
               }`}
@@ -370,14 +399,16 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
                     />
                     <span className="text-sm text-gray-700">Sesuai spesifikasi</span>
                   </div>
-                  <input
-                    type="text"
-                    name={crit}
-                    value={data.criteria[crit]}
-                    onChange={handleChange}
-                    readOnly
-                    className="border p-2 w-full rounded mb-2 bg-gray-100 text-gray-700"
-                  />
+                  {crit !== "completeness" && (
+                    <input
+                      type="text"
+                      name={crit}
+                      value={data.criteria[crit]}
+                      onChange={handleChange}
+                      readOnly
+                      className="border p-2 w-full rounded mb-2 bg-gray-100 text-gray-700"
+                    />
+                  )}
                   <input
                     type="text"
                     name={`${crit}_remark`}
@@ -452,19 +483,23 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
 
       {/* Buttons */}
       <div className="flex justify-between mt-6 border-t pt-6">
-        <button
-          onClick={onPrev}
-          className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-        >
-          Back
-        </button>
-        <div className="flex gap-2">
+        { !new URLSearchParams(window.location.search).get("spps_id") ? (
           <button
+            onClick={onPrev}
+            className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+          >
+            Back
+          </button>
+        ) : (
+          <div></div>
+        )}
+        <div className="flex gap-2">
+          {/* <button
             onClick={handleSaveDraft}
             className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
           >
             Save Draft
-          </button>
+          </button> */}
           <button
             onClick={handleSubmit}
             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"

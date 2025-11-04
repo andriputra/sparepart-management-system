@@ -30,6 +30,8 @@ router.get("/with-documents", async (req, res) => {
     const [rows] = await db.query(`
       SELECT 
           s.id AS spis_id,
+          MIN(p.id) AS spps_id,
+          MIN(q.id) AS spqs_id,
           s.doc_no AS spis_doc_no,
           COALESCE(MAX(p.doc_no), '') AS spps_doc_no,
           COALESCE(MAX(q.doc_no), '') AS spqs_doc_no,
@@ -49,8 +51,9 @@ router.get("/with-documents", async (req, res) => {
       FROM spis s
       LEFT JOIN spps p ON p.spis_id = s.id
       LEFT JOIN spqs q ON q.spis_id = s.id
-      GROUP BY s.id, s.doc_no, s.name, s.approved_by, s.status, s.updated_at
-  `);
+      GROUP BY 
+          s.id, s.doc_no, s.name, s.approved_by, s.status, s.updated_at
+    `);
     res.json(rows);
   } catch (err) {
     console.error("Error fetching spareparts with documents:", err);

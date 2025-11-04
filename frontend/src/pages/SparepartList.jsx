@@ -56,35 +56,17 @@ export default function SparepartList() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const currentItems = filteredData.slice(startIndex, startIndex + itemsPerPage);
 
-    // console.log("Filtered Data:", currentItems);
-
-    // const handleContinue = (docNo, nextStep) => {
-    //     if (!docNo) {
-    //       toast.error("Tidak ada dokumen draft untuk dilanjutkan!");
-    //       return;
-    //     }
-      
-    //     if (nextStep === "spps") {
-    //       localStorage.setItem("spps_doc_no", docNo);
-    //       window.location.href = `/document-create?step=2&doc_no=${encodeURIComponent(docNo)}`;
-    //     } else if (nextStep === "spqs") {
-    //       localStorage.setItem("spqs_doc_no", docNo);
-    //       window.location.href = `/document-create?step=3&doc_no=${encodeURIComponent(docNo)}`;
-    //     }
-    //   };
-
     const handleContinue = (docNo, nextStep, spisId, sppsId, spqsId) => {
         if (!docNo) {
-          toast.error("Tidak ada dokumen draft untuk dilanjutkan!");
-          return;
+            toast.error("Tidak ada dokumen draft untuk dilanjutkan!");
+            return;
         }
-      
         if (nextStep === "spps") {
-          window.location.href = `/document-create?step=2&spis_id=${spisId}&spps_id=${sppsId}`;
+            window.location.href = `/document-create?step=2&spis_id=${spisId}&spps_id=${sppsId}`;
         } else if (nextStep === "spqs") {
-          window.location.href = `/document-create?step=3&spis_id=${spisId}&spps_id=${sppsId}&spqs_id=${spqsId}`;
+            window.location.href = `/document-create?step=3&spis_id=${spisId}&spps_id=${sppsId}&spqs_id=${spqsId}`;
         } else {
-          window.location.href = `/document-create?step=1&spis_id=${spisId}`;
+            window.location.href = `/document-create?step=1&spis_id=${spisId}`;
         }
     };
     
@@ -195,7 +177,6 @@ export default function SparepartList() {
                                     <th className="px-3 py-3 border text-center">SPPS</th>
                                     <th className="px-3 py-3 border text-center">SPQS</th>
                                     <th className="px-3 py-3 border text-center">Document Date</th>
-                                    <th className="px-3 py-3 border text-center">Approved at</th>
                                     <th colSpan={2} className="px-3 py-3 border text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -262,7 +243,7 @@ export default function SparepartList() {
                                                             {item.spps_status === "draft" && item.spis_status === "submitted" && (
                                                                 <button
                                                                     // onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps")}
-                                                                    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps", item.spis_id)}
+                                                                    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps", item.spis_id, item.spps_id,  item.spqs_id)}
                                                                     disabled={role === "viewer" || role === "approval"}
                                                                     className={`px-3 py-1 rounded flex items-center gap-1 ${
                                                                     role === "viewer" || role === "approval"
@@ -278,7 +259,7 @@ export default function SparepartList() {
                                                             {item.spqs_status === "draft" && item.spps_status === "submitted" && (
                                                                 <button
                                                                     // onClick={() => handleContinue(item.spqs_doc_no || item.spps_doc_no, "spqs")}
-                                                                    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps", item.spis_id)}
+                                                                    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spqs", item.spis_id, item.spps_id, item.spqs_id)}
                                                                     disabled={role === "viewer" || role === "approval"}
                                                                     className={`px-3 py-1 rounded flex items-center gap-1 ${
                                                                     role === "viewer" || role === "approval"

@@ -1,9 +1,26 @@
 import express from "express";
 import multer from "multer";
 import db from "../config/db.js";
+import path from "path";
+import fs from "fs";
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/" });
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = "uploads/spps";
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({ storage });
 router.post("/", upload.any(), async (req, res) => {
   try {
     const fields = req.body;
@@ -16,7 +33,7 @@ router.post("/", upload.any(), async (req, res) => {
     // 🔹 Map file upload
     const uploadedFiles = {};
     (req.files || []).forEach((file) => {
-      uploadedFiles[file.fieldname] = `/uploads/${file.filename}`;
+      uploadedFiles[file.fieldname] = `/uploads/spps/${file.filename}`;
     });
 
     // 🔹 Generate doc_no otomatis SPPS
@@ -109,7 +126,7 @@ router.put("/:id", upload.any(), async (req, res) => {
     const uploadedFiles = {};
 
     (req.files || []).forEach((file) => {
-      uploadedFiles[file.fieldname] = `/uploads/${file.filename}`;
+      uploadedFiles[file.fieldname] = `/uploads/spps/${file.filename}`;
     });
 
     const allowedFields = [
@@ -235,6 +252,42 @@ router.get("/by-spis/:spis_id", async (req, res) => {
   } catch (err) {
     console.error("Error fetching SPPS by spis_id:", err);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ✅ Ambil data SPPS berdasarkan ID
+router.get("/by-id/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await db.query("SELECT * FROM spps WHERE id = ?", [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "SPPS not found" });
+    }
+
+    const spps = rows[0];
+
+    // Parsing JSON fields jika ada
+    if (spps.part_material) {
+      try {
+        spps.part_material = JSON.parse(spps.part_material);
+      } catch {
+        spps.part_material = [spps.part_material];
+      }
+    }
+
+    if (spps.data_json) {
+      try {
+        spps.data_json = JSON.parse(spps.data_json);
+      } catch {
+        spps.data_json = {};
+      }
+    }
+
+    res.json(spps);
+  } catch (err) {
+    console.error("Error fetching SPPS by ID:", err);
+    res.status(500).json({ error: "Failed to fetch SPPS" });
   }
 });
 export default router;

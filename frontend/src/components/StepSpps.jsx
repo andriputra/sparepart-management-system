@@ -36,6 +36,67 @@ const getFullImageUrl = (path) => {
 };
 
 export default function StepSpps({ onNext, onPrev, initialData }) {
+  // === Load SPPS by spps_id (Back from Step 3) ===
+  useEffect(() => {
+    const fetchSppsById = async () => {
+      let sppsId =
+        localStorage.getItem("spps_id") ||
+        new URLSearchParams(window.location.search).get("spps_id");
+      if (!sppsId) return;
+      try {
+        const res = await api.get(`/spareparts/spps/by-id/${sppsId}`);
+        if (res.data) {
+          const spps = res.data;
+          let parsedInspection = {};
+          try {
+            if (typeof spps.inspection === "string") {
+              parsedInspection = JSON.parse(spps.inspection);
+            } else if (typeof spps.inspection === "object" && spps.inspection !== null) {
+              parsedInspection = spps.inspection;
+            }
+          } catch (err) {
+            // ignore
+          }
+          setData((prev) => ({
+            ...prev,
+            doc_no: spps.doc_no || prev.doc_no,
+            date: formatDate(spps.date) || prev.date,
+            part_number: spps.part_number || prev.part_number,
+            supplier: spps.supplier || prev.supplier,
+            part_description: spps.part_description || prev.part_description,
+            qty: spps.qty || prev.qty,
+            part_weight: parsedInspection.weight || spps.part_weight || prev.part_weight,
+            part_dimension: parsedInspection.package_dimension || spps.part_dimension || prev.part_dimension,
+            detail_part: spps.detail_part || prev.detail_part,
+            created_by: spps.created_by || prev.created_by,
+            approved_by: spps.approved_by || prev.approved_by,
+            package_material: spps.package_material || prev.package_material,
+            package_code: spps.package_code || prev.package_code,
+            package_detail: spps.package_detail || prev.package_detail,
+            // illustration_part: keep from SPIS if not changed, otherwise use spps.illustration_part
+            illustration_part:
+              spps.illustration_part
+                ? getFullImageUrl(spps.illustration_part)
+                : prev.illustration_part,
+            // Images (for package, package_illustration, result_illustration)
+            ...[0,1,2,3].reduce((acc, i) => {
+              acc[`package_${i}_url`] = spps[`package_${i}_url`] ? getFullImageUrl(spps[`package_${i}_url`]) : prev[`package_${i}_url`];
+              return acc;
+            }, {}),
+            ...[0,1].reduce((acc, i) => {
+              acc[`package_illustration_${i}_url`] = spps[`package_illustration_${i}_url`] ? getFullImageUrl(spps[`package_illustration_${i}_url`]) : prev[`package_illustration_${i}_url`];
+              return acc;
+            }, {}),
+            result_illustration_url: spps.result_illustration_url ? getFullImageUrl(spps.result_illustration_url) : prev.result_illustration_url,
+          }));
+        }
+      } catch (err) {
+        // ignore error
+      }
+    };
+    fetchSppsById();
+    // eslint-disable-next-line
+  }, []);
   const dispatch = useDispatch();
 
   const defaultData = {
@@ -59,20 +120,19 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
   const [data, setData] = useState({
     ...defaultData,
     ...(initialData
-      ? {
-          date: initialData.date,
-          part_number: initialData.part_number,
-          supplier: initialData.supplier,
-          part_description: initialData.part_description,
-          detail_part: initialData.detail_part,
-          part_weight: initialData.inspection?.weight,
-          part_dimension: initialData.inspection?.package_dimension,
-          created_by: initialData.name,
-          illustration_part: getFullImageUrl(initialData.photo1_url || initialData.photo1),
-        }
-      : {}),
+    ? {
+        date: initialData.date,
+        part_number: initialData.part_number,
+        supplier: initialData.supplier,
+        part_description: initialData.part_description,
+        detail_part: initialData.detail_part,
+        part_weight: initialData.inspection?.weight,
+        part_dimension: initialData.inspection?.package_dimension,
+        created_by: initialData.name,
+        illustration_part: getFullImageUrl(initialData.photo1_url || initialData.photo1),
+      }
+    : {}),
   });
-
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
@@ -169,8 +229,6 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     initDocNoAndDate();
     // eslint-disable-next-line
   }, [data.doc_no, data.date]);
-  
-  // Hapus efek localStorage spps_form_data, spps_doc_no dsb
 
   useEffect(() => {
     const serializableData = Object.fromEntries(
@@ -213,7 +271,10 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
   };
 
   const handleNext = async () => {
-    dispatch(setSppsData(data));
+    // Pastikan status pada data yang dikirim ke backend sudah 'submitted'
+    // (Karena setData bersifat async, kita buat finalData di sini)
+    const finalData = { ...data, status: "submitted" };
+
     // Validasi field required sebelum lanjut
     const requiredFields = [
       "doc_no",
@@ -228,8 +289,8 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     ];
     const isEmpty = requiredFields.some(
       (field) =>
-        !data[field] ||
-        (typeof data[field] === "string" && data[field].trim() === "")
+        !finalData[field] ||
+        (typeof finalData[field] === "string" && finalData[field].trim() === "")
     );
     if (isEmpty) {
       toast.error("Harap isi semua field yang wajib diisi (*).");
@@ -248,7 +309,10 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         return;
       }
 
-      // 🔹 Hanya field yang memang dikirim ke tabel SPPS
+      // === Hanya field yang memang dikirim ke tabel SPPS ===
+      // Komentar: Kode berikut memastikan status sudah 'submitted'
+      // sebelum data dikirim ke backend, dan dispatch serta onNext
+      // dilakukan setelah formData diisi.
       const allowedFields = [
         "doc_no",
         "date",
@@ -266,10 +330,9 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         "status",
         "approved_by",
       ];
-
       allowedFields.forEach((key) => {
-        if (data[key] !== undefined && data[key] !== null) {
-          formData.append(key, data[key]);
+        if (finalData[key] !== undefined && finalData[key] !== null) {
+          formData.append(key, finalData[key]);
         }
       });
 
@@ -317,8 +380,8 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       if (response?.data?.id) {
         localStorage.setItem("spps_id", response.data.id);
       }
-      dispatch(setSppsData(data));
-      onNext({ ...data, spps_id: response?.data?.id || existingSppsId });
+      dispatch(setSppsData(finalData));
+      onNext({ ...finalData, spps_id: response?.data?.id || existingSppsId });
     } catch (err) {
       console.error("Error saving SPPS:", err);
       toast.error("Failed to save SPPS");
@@ -536,20 +599,24 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
 
       {/* Buttons */}
       <div className="mt-6 flex justify-between border-t pt-6">
-        <button
-          onClick={onPrev}
-          className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-        >
-          Back
-        </button>
-        <div className="flex gap-2">
+        { !new URLSearchParams(window.location.search).get("spps_id") ? (
           <button
+            onClick={onPrev}
+            className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+          >
+            Back
+          </button>
+        ) : (
+          <div></div>
+        )}
+        <div className="flex gap-2">
+          {/* <button
             onClick={handleSaveDraft}
             type="button"
             className="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400"
           >
             Save Draft
-          </button>
+          </button> */}
           <button
             onClick={handleNext}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -561,3 +628,5 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     </div>
   );
 }
+
+// === Load SPPS by spps_id (Back from Step 3) ===

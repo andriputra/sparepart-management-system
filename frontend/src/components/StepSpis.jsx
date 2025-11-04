@@ -812,13 +812,13 @@ export default function StepSpis({ onNext, initialData }) {
 
       <div className="mt-6 flex justify-between border-t pt-6">
         <div className="flex gap-2">
-        <button
-          onClick={handleSaveDraft}
-          type="button"
-          className="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400"
-        >
-          Save Draft
-        </button>
+          {/* <button
+            onClick={handleSaveDraft}
+            type="button"
+            className="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400"
+          >
+            Save Draft
+          </button> */}
         </div>
         <button
           onClick={handleNext}
