@@ -2,7 +2,8 @@ import { useRef, useState, useEffect } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 import { clearDocuments } from "../utils/clearDocuments";
-import { FaPlus } from "react-icons/fa";
+import { FaPaperPlane, FaPlus, FaArrowLeft, FaFilePdf } from "react-icons/fa";
+
 const BASE_URL = import.meta.env.VITE_SERVER_URL;
 const getFullImageUrl = (path) => {
   if (!path) return "";
@@ -33,6 +34,8 @@ const formatDate = (value) => {
 };
 
 export default function StepSpqs({ onPrev, onNext, initialData }) {
+  const [isDraftSaved, setIsDraftSaved] = useState(false);
+
   const defaultData = {
     doc_no: "",
     part_number: "",
@@ -229,21 +232,26 @@ photo2_url: getFullImageUrl(spisData.photo2_url || spisData.photo2),
   const handleSaveDraft = async () => {
     try {
       const userId = localStorage.getItem("user_id");
-      if (!userId) {
+      const token = localStorage.getItem("token");
+      if (!userId || !token) {
         toast.error("Please login first.");
         return;
       }
 
-      await api.post("/spqs/save-draft", { user_id: userId, data });
+      await api.post(
+        "/spqs/save-draft",
+        { user_id: userId, data },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       toast.success("SPQS draft saved successfully!");
+      setIsDraftSaved(true);
     } catch (err) {
-      console.error(err);
+      console.error("Error saving draft:", err);
       toast.error("Failed to save draft");
     }
   };
 
   const handleSubmit = async () => {
-    // Required fields: doc_no, date, part_number, part_description, supplier, criteria.package_dimension, criteria.weight, criteria.material
     const requiredFields = [
       { value: data.doc_no, name: "doc_no" },
       { value: data.date, name: "date" },
@@ -290,8 +298,6 @@ photo2_url: getFullImageUrl(spisData.photo2_url || spisData.photo2),
 
       toast.success("SPQS submitted successfully!");
       clearDocuments();
-
-      // Hapus storage lama
       [
         "spis_doc_no",
         "spps_doc_no",
@@ -483,28 +489,43 @@ photo2_url: getFullImageUrl(spisData.photo2_url || spisData.photo2),
 
       {/* Buttons */}
       <div className="flex justify-between mt-6 border-t pt-6">
-        { !new URLSearchParams(window.location.search).get("spps_id") ? (
-          <button
-            onClick={onPrev}
-            className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-          >
-            Back
-          </button>
+        { !new URLSearchParams(window.location.search).get("spps_id") ? ( 
+          <div className="flex gap-2">
+            <button
+              onClick={onPrev}
+              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 flex gap-2 items-center"
+              >
+                <FaArrowLeft/> Back
+            </button>
+            <button
+              onClick={handleSaveDraft}
+              className="border border-blue-400 bg-blue-100 text-blue-500 px-6 py-2 rounded hover:bg-blue-300"
+            >
+              Save Draft
+            </button>
+            <a
+              href={`/document/view/SPQS/${encodeURIComponent(data.doc_no)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              disabled={!isDraftSaved}
+              className={`px-6 py-2 rounded flex gap-2 items-center ${
+                isDraftSaved
+                  ? "border border-yellow-500 bg-yellow-200 text-yellow-600 hover:bg-yellow-400"
+                  : "bg-gray-300 text-gray-100 cursor-not-allowed pointer-events-none"
+              }`}
+              >
+              Preview <FaFilePdf/>
+            </a>
+          </div>
         ) : (
           <div></div>
-        )}
+        )} 
         <div className="flex gap-2">
-          {/* <button
-            onClick={handleSaveDraft}
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
-          >
-            Save Draft
-          </button> */}
           <button
             onClick={handleSubmit}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
           >
-            Submit
+            Submit <FaPaperPlane/>
           </button>
         </div>
       </div>

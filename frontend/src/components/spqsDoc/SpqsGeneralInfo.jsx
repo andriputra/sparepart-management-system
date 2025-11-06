@@ -8,7 +8,7 @@ export default function SpqsGeneralInfo({ data }) {
             ? `${serverUrl}${data.created_signature_url}`
             : data.created_signature
                 ? `${serverUrl}${data.created_signature}`
-                : "/placeholder-signature.png";
+                : "/placeholder-image.png";
 
     const approvedSignature =
         data.approved_signature_url
@@ -19,26 +19,31 @@ export default function SpqsGeneralInfo({ data }) {
     
     const isApproved = !!data.approved_by;
 
-    const [photo1, setPhoto1] = useState("/placeholder-foto.png");
-    const [photo2, setPhoto2] = useState("/placeholder-foto.png");
+    const [photo1, setPhoto1] = useState("/placeholder-image.png");
+    const [photo2, setPhoto2] = useState("/placeholder-image.png");
 
     useEffect(() => {
+        if (data.photo1_url || data.photo2_url) {
+            if (data.photo1_url)
+                setPhoto1(data.photo1_url.startsWith("http") ? data.photo1_url : `${serverUrl}${data.photo1_url}`);
+            if (data.photo2_url)
+                setPhoto2(data.photo2_url.startsWith("http") ? data.photo2_url : `${serverUrl}${data.photo2_url}`);
+            return;
+        }
+    
         const fetchIllustration = async () => {
             try {
                 if (!data.spis_id) return;
-                    const res = await api.get(`/spareparts/spis/photo/${data.spis_id}`);
-                if (res.data?.photo1) {
-                    setPhoto1(`${serverUrl}${res.data.photo1}`);
-                }
-                if (res.data?.photo2) {
-                    setPhoto2(`${serverUrl}${res.data.photo2}`);
-                }
+                const res = await api.get(`/spareparts/spis/photo/${data.spis_id}`);
+                if (res.data?.photo1) setPhoto1(`${serverUrl}${res.data.photo1}`);
+                if (res.data?.photo2) setPhoto2(`${serverUrl}${res.data.photo2}`);
             } catch (err) {
                 console.error("Error fetching SPQS illustration:", err);
             }
         };
+    
         fetchIllustration();
-    }, [data.spis_id, serverUrl]);
+    }, [data, serverUrl]);
 
     return (
         <>

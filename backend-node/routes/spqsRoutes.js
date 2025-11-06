@@ -140,25 +140,94 @@ router.post("/", async (req, res) => {
   }
 });
 
-/**
- * ✅ SAVE DRAFT
- * Simpan data sementara ke tabel spqs_draft
- */
+/// ✅ Save draft
 router.post("/save-draft", async (req, res) => {
-  const { user_id, data } = req.body;
-  if (!user_id) {
-    return res.status(400).json({ error: "user_id wajib diisi" });
-  }
-
   try {
-    await db.query(
-      "REPLACE INTO spqs_draft (user_id, data_json, updated_at) VALUES (?, ?, NOW())",
-      [user_id, JSON.stringify(data)]
+    const { user_id, data } = req.body;
+
+    if (!user_id || !data) {
+      return res.status(400).json({ message: "Missing data" });
+    }
+
+    // Simpan draft (update jika sudah ada)
+    const [existing] = await db.query(
+      "SELECT id FROM spqs WHERE doc_no = ? LIMIT 1",
+      [data.doc_no]
     );
-    res.json({ message: "Draft SPQS berhasil disimpan" });
+
+    const dataJson = JSON.stringify(data);
+
+    if (existing.length > 0) {
+      await db.query(
+        `UPDATE spqs SET data_json = ?, status = 'draft', updated_at = NOW() WHERE id = ?`,
+        [dataJson, existing[0].id]
+      );
+      res.json({ message: "Draft updated successfully", id: existing[0].id });
+    } else {
+      const [result] = await db.query(
+        `INSERT INTO spqs (user_id, doc_no, data_json, status, created_at, updated_at)
+         VALUES (?, ?, ?, 'draft', NOW(), NOW())`,
+        [user_id, data.doc_no, dataJson]
+      );
+      res.json({ message: "Draft saved successfully", id: result.insertId });
+    }
   } catch (err) {
-    console.error("❌ Failed to save SPQS draft:", err);
-    res.status(500).json({ error: "Gagal menyimpan draft SPQS" });
+    console.error("Error saving draft:", err);
+    res.status(500).json({ message: "Failed to save draft" });
+  }
+});
+
+//GET /by-doc/:doc_no - Get SPPS by doc_no (with user signatures)
+router.get("/by-doc/:doc_no", async (req, res) => {
+  try {
+    const decodedDocNo = decodeURIComponent(req.params.doc_no);
+    // Join users table to get signature URLs
+    const [rows] = await db.query(
+      `SELECT 
+          s.*, 
+          COALESCE(uc.signature_url, uc2.signature_url) AS created_signature_url,
+          COALESCE(ua.signature_url, ua2.signature_url) AS approved_signature_url
+       FROM spqs s
+       LEFT JOIN users uc ON uc.fullname = s.created_by
+       LEFT JOIN users uc2 ON uc2.name = s.created_by
+       LEFT JOIN users ua ON ua.fullname = s.approved_by
+       LEFT JOIN users ua2 ON ua2.name = s.approved_by
+       WHERE s.doc_no = ?`,
+      [decodedDocNo]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "SPQS not found" });
+    }
+    const data = rows[0];
+     let parsedData = {};
+    try {
+      parsedData = data.data_json ? JSON.parse(data.data_json) : {};
+    } catch (e) {
+      console.warn("⚠️ Gagal parse data_json:", e.message);
+    }
+
+    // Jika draft → pakai data_json
+    if (data.status === "draft") {
+      return res.json({
+        ...parsedData,
+        doc_no: data.doc_no,
+        status: data.status,
+        id: data.id,
+        created_signature_url: data.created_signature_url,
+        approved_signature_url: data.approved_signature_url,
+      });
+    }
+
+    res.json({
+      ...data,
+      ...parsedData,
+      created_signature_url: data.created_signature_url,
+      approved_signature_url: data.approved_signature_url,
+    });
+  } catch (err) {
+    console.error("Error fetching SPQS by doc_no:", err);
+    res.status(500).json({ error: "Failed to fetch SPQS by doc_no" });
   }
 });
 

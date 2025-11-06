@@ -6,7 +6,7 @@ export default function SpisFooter({ data }) {
             ? `${serverUrl}${data.created_signature_url}`
             : data.created_signature
                 ? `${serverUrl}${data.created_signature}`
-                : "/placeholder-signature.png";
+                : "/placeholder-image.png";
 
     const approvedSignature =
         data.approved_signature_url
@@ -18,53 +18,56 @@ export default function SpisFooter({ data }) {
     const isApproved = !!data.approved_by;
 
     return (
-        <div className="flex gap-8 items-start">
-            <table className="w-full border border-gray-500 text-sm mb-6">
+        <div className="flex gap-8 items-stretch">
+            {/* Kolom Keterangan */}
+            <table className="w-full border border-gray-500 text-sm mb-6 h-full">
                 <tbody>
                     <tr className="bg-gray-100">
-                        <td className="border border-gray-500 p-2 font-semibold text-center">Keterangan</td>
+                        <td className="border border-gray-500 p-2 font-semibold text-center">
+                        Keterangan
+                        </td>
                     </tr>
-                    <tr>
-                        <td className="border border-gray-500 p-2 h-20 align-top">{data.description || "-"}</td>
+                    <tr className="align-top h-40">
+                        <td className="border border-gray-500 p-2 align-top h-full">
+                        <div className="h-full">{data.description || "-"}</div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
 
-            {/* Signature Section */}
-            <table className="w-full border border-gray-500 text-sm mb-6">
+            {/* Kolom Tanda Tangan */}
+            <table className="w-full border border-gray-500 text-sm mb-6 h-full">
                 <tbody>
                     <tr className="bg-gray-100">
                         <td className="border border-gray-500 p-2 font-semibold text-center">
-                            Dibuat Oleh
+                        Dibuat Oleh
                         </td>
                         <td className="border border-gray-500 p-2 font-semibold text-center">
-                            Menyetujui
+                        Menyetujui
                         </td>
                     </tr>
-                    <tr>
-                        <td className="border border-gray-500 p-8 align-end text-center">
+                    <tr className="h-40">
+                        <td className="border border-gray-500 align-end text-center h-full">
                             <img
                                 src={createdSignature}
                                 alt="Signature Created By"
-                                className="mx-auto max-h-16 object-contain mb-2"
+                                className="mx-auto max-h-16 object-contain mb-6"
                             />
                             {data.created_by || "-"}
                         </td>
-                        <td className="border border-gray-500 p-8 align-end text-center">
-                            {isApproved ? (
-                                <>
-                                    <img
-                                        src={approvedSignature}
-                                        alt="Signature Approved By"
-                                        className="mx-auto max-h-16 object-contain mb-2"
-                                    />
-                                    {data.approved_by}
-                                </>
-                            ) : (
-                                <p className="text-gray-500 italic">
-                                    Belum di-approve
-                                </p>
-                            )}
+                        <td className="border border-gray-500 align-end text-center h-full">
+                        {isApproved ? (
+                            <>
+                            <img
+                                src={approvedSignature}
+                                alt="Signature Approved By"
+                                className="mx-auto max-h-16 object-contain mb-6"
+                            />
+                            {data.approved_by}
+                            </>
+                        ) : (
+                            <p className="text-gray-500 italic">Belum di-approve</p>
+                        )}
                         </td>
                     </tr>
                 </tbody>

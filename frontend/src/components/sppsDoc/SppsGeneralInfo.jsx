@@ -6,7 +6,7 @@ export default function SppsGeneralInfo({ data }) {
             ? `${serverUrl}${data.created_signature_url}`
             : data.created_signature
                 ? `${serverUrl}${data.created_signature}`
-                : "/placeholder-signature.png";
+                : "/placeholder-image.png";
 
     const approvedSignature =
         data.approved_signature_url
@@ -53,7 +53,7 @@ export default function SppsGeneralInfo({ data }) {
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 font-semibold">Detail Part</td>
-                        <td className="border border-gray-500 p-1">{data.detail_parts || "-"}</td>
+                        <td className="border border-gray-500 p-1">{data.detail_part || "-"}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 font-semibold">Tanggal</td>
@@ -68,7 +68,7 @@ export default function SppsGeneralInfo({ data }) {
                             <img
                                 src={createdSignature}
                                 alt="Tanda Tangan PIC"
-                                className="mx-auto h-16 object-contain"
+                                className="mx-auto h-16 object-contain mb-3"
                             />
                         </td>
                         <td className="border border-black h-24 text-center align-bottom">
@@ -77,9 +77,8 @@ export default function SppsGeneralInfo({ data }) {
                                     <img
                                         src={approvedSignature}
                                         alt="Signature Approved By"
-                                        className="mx-auto max-h-16 object-contain mb-2"
+                                        className="mx-auto max-h-16 object-contain mb-3"
                                     />
-                                    {data.approved_by}
                                 </>
                             ) : (
                                 <p className="text-gray-500 italic">

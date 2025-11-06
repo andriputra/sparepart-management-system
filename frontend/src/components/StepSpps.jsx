@@ -4,6 +4,7 @@ import { setSppsData } from "../store/sppsSlice";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 import PartImageUpload from "./PartImageUpload";
+import { FaArrowLeft, FaArrowRight, FaFilePdf } from "react-icons/fa";
 
 const formatDate = (value) => {
   if (!value) return "";
@@ -36,6 +37,8 @@ const getFullImageUrl = (path) => {
 };
 
 export default function StepSpps({ onNext, onPrev, initialData }) {
+  const [isDraftSaved, setIsDraftSaved] = useState(false);
+
   // === Load SPPS by spps_id (Back from Step 3) ===
   useEffect(() => {
     const fetchSppsById = async () => {
@@ -55,7 +58,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
               parsedInspection = spps.inspection;
             }
           } catch (err) {
-            // ignore
+            console.warn("Failed to parse inspection JSON:", err);
           }
           setData((prev) => ({
             ...prev,
@@ -91,11 +94,10 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
           }));
         }
       } catch (err) {
-        // ignore error
+        console.error("Error fetching SPPS by ID:", err);
       }
     };
     fetchSppsById();
-    // eslint-disable-next-line
   }, []);
   const dispatch = useDispatch();
 
@@ -205,13 +207,11 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
           toast.error("Gagal mengambil data SPIS.");
         }
       } else {
-        // Jika tidak ada SPIS, generate doc_no baru
         const newDocNo = await generateDocNo();
         setData((prev) => ({ ...prev, doc_no: newDocNo }));
       }
     };
     fetchInitialSpis();
-    // eslint-disable-next-line
   }, []);
 
   // === Generate doc_no & date jika belum ada ===
@@ -227,7 +227,6 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       }
     };
     initDocNoAndDate();
-    // eslint-disable-next-line
   }, [data.doc_no, data.date]);
 
   useEffect(() => {
@@ -254,8 +253,8 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         toast.error("Please login first.");
         return;
       }
-      if (!data.date) {
-        toast.warning("Tanggal wajib diisi sebelum lanjut.");
+      if (!data.qty) {
+        toast.warning("Quantity (Qty) diisi sebelum lanjut.");
         return;
       }
       await api.post(
@@ -264,6 +263,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("SPPS draft saved successfully!");
+      setIsDraftSaved(true);
     } catch (err) {
       console.error("Error saving draft:", err);
       toast.error("Failed to save draft");
@@ -271,11 +271,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
   };
 
   const handleNext = async () => {
-    // Pastikan status pada data yang dikirim ke backend sudah 'submitted'
-    // (Karena setData bersifat async, kita buat finalData di sini)
     const finalData = { ...data, status: "submitted" };
-
-    // Validasi field required sebelum lanjut
     const requiredFields = [
       "doc_no",
       "date",
@@ -599,31 +595,47 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
 
       {/* Buttons */}
       <div className="mt-6 flex justify-between border-t pt-6">
+        <div className="flex gap-2">
         { !new URLSearchParams(window.location.search).get("spps_id") ? (
-          <button
-            onClick={onPrev}
-            className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-          >
-            Back
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onPrev}
+              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 flex gap-2 items-center"
+            >
+              <FaArrowLeft/> Back
+            </button>
+          
+            <button
+              onClick={handleSaveDraft}
+              type="button"
+              className="border border-blue-400 bg-blue-100 text-blue-500 px-6 py-2 rounded hover:bg-blue-300"
+            >
+              Save Draft
+            </button>
+            <a
+              href={`/document/view/SPPS/${encodeURIComponent(data.doc_no)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              disabled={!isDraftSaved}
+              className={`px-6 py-2 rounded flex gap-2 items-center ${
+                isDraftSaved
+                  ? "border border-yellow-500 bg-yellow-200 text-yellow-600 hover:bg-yellow-400"
+                  : "bg-gray-300 text-gray-100 cursor-not-allowed pointer-events-none"
+              }`}
+            >
+              Preview <FaFilePdf/>
+            </a>
+          </div>
         ) : (
           <div></div>
         )}
-        <div className="flex gap-2">
-          {/* <button
-            onClick={handleSaveDraft}
-            type="button"
-            className="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400"
-          >
-            Save Draft
-          </button> */}
-          <button
-            onClick={handleNext}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Next
-          </button>
         </div>
+        <button
+          onClick={handleNext}
+          className="bg-blue-600 text-white px-4   py-2 rounded hover:bg-blue-700 flex gap-2 items-center"
+        >
+          Next <FaArrowRight/>
+        </button>
       </div>
     </div>
   );

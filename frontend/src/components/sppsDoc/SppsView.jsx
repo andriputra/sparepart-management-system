@@ -1,28 +1,8 @@
-import { useEffect, useState } from "react";
-import api from "../../api/axios";
-import { useParams } from "react-router-dom";
 import SppsHeader from "./SppsHeader";
 import SppsGeneralInfo from "./SppsGeneralInfo";
 import SppsImages from "./SppsImages";
 
-export default function SpisView() {
-    const { doc_no } = useParams();
-    const [data, setData] = useState(null);
-    const decodedDocNo = decodeURIComponent(doc_no);
-
-    useEffect(() => {
-        const fetchData = async () => {
-          try {
-            const res = await api.get(`/spareparts/spps?doc_no=${encodeURIComponent(decodedDocNo)}`);
-            setData(res.data);
-            console.log("Fetched SPPS data:", res.data);
-          } catch (err) {
-            console.error("Error fetching SPPS:", err);
-          }
-        };
-        fetchData();
-    }, [decodedDocNo]);
-
+export default function SpisView({data, doc_no}) {
     if (!data) return <p className="text-center py-10">Memuat data SPPS...</p>;
 
     return (

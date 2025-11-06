@@ -5,6 +5,7 @@ import api from "../api/axios";
 import { toast } from "react-toastify";
 import PartImageUpload from "./PartImageUpload";
 import { FiTrash2 } from "react-icons/fi";
+import { FaArrowRight, FaFilePdf } from "react-icons/fa";
 
 const defaultData = {
   doc_no: "",
@@ -53,6 +54,7 @@ export default function StepSpis({ onNext, initialData }) {
 
   // 🔹 Sinkronisasi state lokal dan Redux
   const [data, setData] = useState(initialData && Object.keys(initialData).length > 0 ? initialData : spis || defaultData);
+  const [isDraftSaved, setIsDraftSaved] = useState(false);
 
   const images = Array.isArray(data.part_images)
     ? data.part_images
@@ -350,7 +352,7 @@ export default function StepSpis({ onNext, initialData }) {
   useEffect(() => {
     localStorage.setItem("spis_form_data", JSON.stringify(data));
   }, [data]);
-
+  
   const handleSaveDraft = async () => {
     try {
       const userId = localStorage.getItem("user_id");
@@ -359,30 +361,18 @@ export default function StepSpis({ onNext, initialData }) {
         toast.error("Please login first.");
         return;
       }
-  
+
+      // Validation: Require date field for draft
+      if (!data.date || data.date.toString().trim() === "") {
+        toast.warning("Tanggal wajib diisi sebelum menyimpan draft.");
+        return;
+      }
+
       if (!data.part_number && !data.name) {
         toast.warning("Isi minimal Part Number atau Name sebelum menyimpan draft.");
         return;
       }
-  
-      let photoUrl = data.photo_url || null;
-  
-      // Jika user upload foto baru (File object)
-      if (data.photo instanceof File) {
-        const formData = new FormData();
-        formData.append("photo", data.photo);
-  
-        const uploadRes = await api.post("/spis/upload-photo", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-  
-        photoUrl = uploadRes.data.photo_url;
-      }
-  
-      // Siapkan data draft
+
       let finalMaterials = data.part_material || [];
       if (finalMaterials.includes("Other") && data.other_material) {
         finalMaterials = finalMaterials.map((m) =>
@@ -390,50 +380,30 @@ export default function StepSpis({ onNext, initialData }) {
         );
       }
 
-      // const draftData = { ...data, photo_url: photoUrl, part_material: finalMaterials };
       const draftData = {
         ...data,
-        photo_url: photoUrl,
         part_material: finalMaterials,
         part_images: serializeImages(data.part_images),
       };
-      delete draftData.photo; 
-      await api.post("/spis/save-draft",{ user_id: userId, data: draftData,},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+
+      const res = await api.post(
+        "/spis/save-draft",
+        { user_id: userId, data: draftData },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-  
+
+      const spisId = res.data.id;
+      if (spisId) {
+        localStorage.setItem("spis_id", spisId);
+      }
+
       toast.success("Draft saved successfully!");
+      setIsDraftSaved(true);
     } catch (err) {
       console.error("Error saving draft:", err);
-      if (err.response?.status === 401) {
-        toast.error("Session expired, please login again.");
-      } else {
-        toast.error("Failed to save draft. Please try again.");
-      }
+      toast.error("Failed to save draft. Please try again.");
     }
   };
-
-  // 🔹 Tampilkan package_dimension dalam format "L x W x H"
-  useEffect(() => {
-    const { length, width, height } = data.inspection;
-  
-    if (length || width || height) {
-      const formatted = [
-        length?.trim() || "-",
-        width?.trim() || "-",
-        height?.trim() || "-",
-      ].join(" x ");
-  
-      if (data.inspection.package_dimension !== formatted) {
-        setData((prev) => ({
-          ...prev,
-          inspection: { ...prev.inspection, package_dimension: formatted },
-        }));
-      }
-    }
-  }, [data.inspection.length, data.inspection.width, data.inspection.height]);
 
   return (
     <div>
@@ -655,11 +625,9 @@ export default function StepSpis({ onNext, initialData }) {
                     name={field}
                     value={data.inspection[field]}
                     onChange={handleInspectionChange}
-                    placeholder={field === "package_dimension" ? "Auto-calculated" : ""}
-                    className={`border p-2 w-full rounded pr-10 ${
-                      field === "package_dimension" ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""
-                    }`}
-                    readOnly={field === "package_dimension"}
+                    placeholder={field === "package_dimension" ? "length x width x height" : ""}
+                    className={`border p-2 w-full rounded pr-10}`}
+                    // readOnly={field === "package_dimension"}
                     required
                   />
                   {suffix && (
@@ -812,20 +780,35 @@ export default function StepSpis({ onNext, initialData }) {
 
       <div className="mt-6 flex justify-between border-t pt-6">
         <div className="flex gap-2">
-          {/* <button
-            onClick={handleSaveDraft}
-            type="button"
-            className="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400"
-          >
-            Save Draft
-          </button> */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSaveDraft}
+              type="button"
+              className="border border-blue-400 bg-blue-100 text-blue-500 px-6 py-2 rounded hover:bg-blue-300"
+            >
+              Save Draft
+            </button>
+            <a
+              href={`/document/view/SPIS/${encodeURIComponent(data.doc_no)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              disabled={!isDraftSaved}
+              className={`px-6 py-2 rounded flex gap-2 items-center ${
+                isDraftSaved
+                  ? "border border-yellow-500 bg-yellow-200 text-yellow-600 hover:bg-yellow-400"
+                  : "bg-gray-300 text-gray-100 cursor-not-allowed pointer-events-none"
+              }`}
+            >
+              Preview <FaFilePdf/>
+            </a>
+          </div>
         </div>
         <button
           onClick={handleNext}
           type="button"
-          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+          className="bg-blue-600 text-white px-4   py-2 rounded hover:bg-blue-700 flex gap-2 items-center"
         >
-          Next
+          Next <FaArrowRight/>
         </button>
       </div>
     </div>

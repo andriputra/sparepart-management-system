@@ -23,9 +23,10 @@ export default function SpisInspectionDetail({ data }) {
         (m) => !["Rubber", "Metal", "Plastic", "Glass"].includes(m)
     );
 
-    const inspectionData = data.inspection
-        ? JSON.parse(data.inspection)
-        : {};
+    const inspectionData =
+        typeof data.inspection === "string"
+            ? JSON.parse(data.inspection)
+            : data.inspection || {};
 
     return (
         <>

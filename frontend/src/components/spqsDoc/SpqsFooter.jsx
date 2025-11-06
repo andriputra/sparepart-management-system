@@ -6,7 +6,7 @@ export default function SpqsFooter({ data }) {
             ? `${serverUrl}${data.created_signature_url}`
             : data.created_signature
                 ? `${serverUrl}${data.created_signature}`
-                : "/placeholder-signature.png";
+                : "/placeholder-image.png";
 
     const approvedSignature =
         data.approved_signature_url
@@ -35,7 +35,7 @@ export default function SpqsFooter({ data }) {
                             <img
                                 src={createdSignature}
                                 alt="Signature Created By"
-                                className="mx-auto max-h-16 object-contain mb-2"
+                                className="mx-auto max-h-16 object-contain mb-4"
                             />
                             {data.created_by || "-"}
                         </td>
@@ -45,7 +45,7 @@ export default function SpqsFooter({ data }) {
                                     <img
                                         src={approvedSignature}
                                         alt="Signature Approved By"
-                                        className="mx-auto max-h-16 object-contain mb-2"
+                                        className="mx-auto max-h-16 object-contain mb-4"
                                     />
                                     {data.approved_by}
                                 </>

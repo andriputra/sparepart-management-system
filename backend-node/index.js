@@ -39,7 +39,9 @@ app.use("/api/spqs", spqsRoutes);
 app.use("/api/spareparts", sparepartsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/spareparts/spis", spisRoutes);
+// app.use("/api/spareparts/spis", spisRoutes);
+
+console.log("✅ spisRoutes loaded at /api/spis");
 
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

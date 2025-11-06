@@ -49,9 +49,11 @@ export default function SpisPartInfo({ data }) {
                 <img
                   src={
                     data.photo1
-                      ? data.photo1.startsWith("blob:")
-                        ? data.photo1 // jika blob, tampilkan langsung
-                        : `${serverUrl}${data.photo1}` // jika path dari backend
+                      ? typeof data.photo1 === "string"
+                        ? data.photo1.startsWith("blob:")
+                          ? data.photo1
+                          : `${serverUrl}${data.photo1}`
+                        : data.photo1_url || "/placeholder-image.png" 
                       : "/placeholder-image.png"
                   }
                   alt="Foto 1"
@@ -62,9 +64,11 @@ export default function SpisPartInfo({ data }) {
                 <img
                   src={
                     data.photo2
-                      ? data.photo2.startsWith("blob:")
-                        ? data.photo2
-                        : `${serverUrl}${data.photo2}`
+                      ? typeof data.photo2 === "string"
+                        ? data.photo2.startsWith("blob:")
+                          ? data.photo2
+                          : `${serverUrl}${data.photo2}`
+                        : data.photo2_url || "/placeholder-image.png"
                       : "/placeholder-image.png"
                   }
                   alt="Foto 2"

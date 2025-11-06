@@ -181,169 +181,170 @@ export default function SparepartList() {
                                 </tr>
                             </thead>
                             <tbody className="text-[14px]">
-                                {currentItems.map((item, index) => {
-                                    const role = (localStorage.getItem("role") || "").toLowerCase();
-
+                                {currentItems
+                                    .filter((item) => {
                                     const statuses = [
                                         item.spis_status,
                                         item.spps_status,
                                         item.spqs_status,
                                     ].map((s) => (s || "").toLowerCase());
+                                        return !statuses.every((s) => s === "draft");
+                                    })
 
-                                    const isAllDraft = statuses.every((s) => s === "draft");
+                                    .map((item, index) => {
+                                    const role = (localStorage.getItem("role") || "").toLowerCase();
+                                    const statuses = [
+                                        item.spis_status,
+                                        item.spps_status,
+                                        item.spqs_status,
+                                    ].map((s) => (s || "").toLowerCase()); 
+                                    
                                     const isAllSubmitted = statuses.every((s) => s === "submitted");
                                     const isAllCompleted = statuses.every((s) => s === "completed");
                                     const isAnySubmitted = statuses.some((s) => s === "submitted");
 
                                     return (
-                                    <tr
-                                        key={item.spis_doc_no}
-                                        className={`hover:bg-gray-50 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
-                                    >
-                                        <td className="px-3 py-2 border text-center">{startIndex + index + 1}</td>
-                                        <td className="px-3 py-2 border">{item.part_number}</td>
-                                        <td className="px-3 py-2 border">{item.created_by}</td>
-                                        <td className="px-3 py-2 border">{item.approved_by || "-"}</td>
+                                        <tr key={item.spis_doc_no} className={`hover:bg-gray-50 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                                            <td className="px-3 py-2 border text-center">{startIndex + index + 1}</td>
+                                            <td className="px-3 py-2 border">{item.part_number}</td>
+                                            <td className="px-3 py-2 border">{item.created_by}</td>
+                                            <td className="px-3 py-2 border">{item.approved_by || "-"}</td>
 
-                                        {["spis_status", "spps_status", "spqs_status"].map((key) => {
-                                            const status = item[key]?.toLowerCase();
-                                            const type = key.split("_")[0]; 
-                                            const docNo = item[`${type}_doc_no`]; 
-                                            const pdfUrl = `/document/view/${type.toUpperCase()}/${encodeURIComponent(docNo)}`;
+                                            {["spis_status", "spps_status", "spqs_status"].map((key) => {
+                                                const status = item[key]?.toLowerCase();
+                                                const type = key.split("_")[0]; 
+                                                const docNo = item[`${type}_doc_no`]; 
+                                                const pdfUrl = `/document/view/${type.toUpperCase()}/${encodeURIComponent(docNo)}`;
 
-                                            return (
-                                                <td key={key} className="px-3 py-2 border text-center">
-                                                    {status === "submitted" || status === "completed" ? (
-                                                        <a
-                                                            href={pdfUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className={`px-2 py-1 rounded text-[10px] font-semibold ${getStatusBadge(status)} hover:underline`}
-                                                        >
-                                                            {status.toUpperCase()}
-                                                        </a>
-                                                    ) : (
-                                                        <span
-                                                            className={`px-2 py-1 rounded text-[10px] font-semibold ${getStatusBadge(status)}`}
-                                                        >
-                                                            {status?.toUpperCase() || "-"}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                            );
-                                        })}
-                                        <td className="px-3 py-2 border text-center"> {new Date(item.updated_at).toLocaleDateString("id-ID")}</td>
-                                        {/* === ACTION BUTTONS === */}
-                                        <td className="px-3 py-2 border text-center">
-                                            <div className="flex justify-center flex-wrap gap-2">
-                                                {(() => {
-                                                    if (isAnySubmitted && !isAllSubmitted) {
-                                                        return (
-                                                        <>
-                                                            {item.spps_status === "draft" && item.spis_status === "submitted" && (
-                                                                <button
-                                                                    // onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps")}
-                                                                    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps", item.spis_id, item.spps_id,  item.spqs_id)}
-                                                                    disabled={role === "viewer" || role === "approval"}
-                                                                    className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                    role === "viewer" || role === "approval"
-                                                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                        : "bg-green-600 hover:bg-green-700 text-white"
-                                                                    }`}
-                                                                    title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPPS"}
-                                                                >
-                                                                    <FaArrowRight /> SPPS
-                                                                </button>
-                                                            )}
+                                                return (
+                                                    <td key={key} className="px-3 py-2 border text-center">
+                                                        {status === "submitted" || status === "completed" ? (
+                                                            <a
+                                                                href={pdfUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className={`px-2 py-1 rounded text-[10px] font-semibold ${getStatusBadge(status)} hover:underline`}
+                                                            >
+                                                                {status.toUpperCase()}
+                                                            </a>
+                                                        ) : (
+                                                            <span
+                                                                className={`px-2 py-1 rounded text-[10px] font-semibold ${getStatusBadge(status)}`}
+                                                            >
+                                                                {status?.toUpperCase() || "-"}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                            <td className="px-3 py-2 border text-center"> {new Date(item.updated_at).toLocaleDateString("id-ID")}</td>
+                                            {/* === ACTION BUTTONS === */}
+                                            <td className="px-3 py-2 border text-center">
+                                                <div className="flex justify-center flex-wrap gap-2">
+                                                    {(() => {
+                                                        if (isAnySubmitted && !isAllSubmitted) {
+                                                            return (
+                                                            <>
+                                                                {item.spps_status === "draft" && item.spis_status === "submitted" && (
+                                                                    <button
+                                                                        // onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps")}
+                                                                        onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps", item.spis_id, item.spps_id,  item.spqs_id)}
+                                                                        disabled={role === "viewer" || role === "approval"}
+                                                                        className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                                        role === "viewer" || role === "approval"
+                                                                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                            : "bg-green-600 hover:bg-green-700 text-white"
+                                                                        }`}
+                                                                        title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPPS"}
+                                                                    >
+                                                                        <FaArrowRight /> SPPS
+                                                                    </button>
+                                                                )}
 
-                                                            {item.spqs_status === "draft" && item.spps_status === "submitted" && (
-                                                                <button
-                                                                    // onClick={() => handleContinue(item.spqs_doc_no || item.spps_doc_no, "spqs")}
-                                                                    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spqs", item.spis_id, item.spps_id, item.spqs_id)}
-                                                                    disabled={role === "viewer" || role === "approval"}
-                                                                    className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                    role === "viewer" || role === "approval"
-                                                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                        : "bg-green-600 hover:bg-green-700 text-white"
-                                                                    }`}
-                                                                    title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPQS"}
-                                                                >
-                                                                    <FaArrowRight /> SPQS
-                                                                </button>
-                                                            )}
-                                                        </>
-                                                        );
-                                                    }
+                                                                {item.spqs_status === "draft" && item.spps_status === "submitted" && (
+                                                                    <button
+                                                                        onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spqs", item.spis_id, item.spps_id, item.spqs_id)}
+                                                                        disabled={role === "viewer" || role === "approval"}
+                                                                        className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                                        role === "viewer" || role === "approval"
+                                                                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                            : "bg-green-600 hover:bg-green-700 text-white"
+                                                                        }`}
+                                                                        title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPQS"}
+                                                                    >
+                                                                        <FaArrowRight /> SPQS
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                            );
+                                                        }
 
-                                                    // Semua submitted
-                                                    if (isAllSubmitted) {
-                                                        return (
-                                                        <>
-                                                            <div className="py-1 px-2 rounded bg-gray-200 text-gray-500">
-                                                                Ready For Approval
-                                                            </div>
+                                                        if (isAllSubmitted) {
+                                                            return (
+                                                            <>
+                                                                <div className="py-1 px-2 rounded bg-gray-200 text-gray-500">
+                                                                    Ready For Approval
+                                                                </div>
 
-                                                            {role === "approval" && (
-                                                                <button
-                                                                    onClick={() => confirmApprove(item.spis_doc_no)}
-                                                                    className="bg-red-300 hover:bg-red-700 hover:text-white text-red-800 px-3 py-1 rounded flex items-center gap-1"
-                                                                >
-                                                                    <FaFilePdf /> Approve
-                                                                </button>
-                                                            )}
-                                                        </>
-                                                        );
-                                                    }
+                                                                {role === "approval" && (
+                                                                    <button
+                                                                        onClick={() => confirmApprove(item.spis_doc_no)}
+                                                                        className="bg-red-300 hover:bg-red-700 hover:text-white text-red-800 px-3 py-1 rounded flex items-center gap-1"
+                                                                    >
+                                                                        <FaFilePdf /> Approve
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                            );
+                                                        }
 
-                                                    // Semua completed → View + PDF + Label Approved
-                                                    if (isAllCompleted) {
-                                                        return (
-                                                            <div className="flex flex-row items-center gap-2">
-                                                                <div className="flex gap-2">
-                                                                    <div className="text-sm text-green-600 px-3 py-1 flex items-center gap-1">
-                                                                        <FaFilePdf /> Approved <FaCheck/>
+                                                        if (isAllCompleted) {
+                                                            return (
+                                                                <div className="flex flex-row items-center gap-2">
+                                                                    <div className="flex gap-2">
+                                                                        <div className="text-sm text-green-600 px-3 py-1 flex items-center gap-1">
+                                                                            <FaFilePdf /> Approved <FaCheck/>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        );
-                                                    }
+                                                            );
+                                                        }
 
-                                                    // Default
-                                                    return (
-                                                        <>
-                                                            <button
-                                                                // onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spis")}
-                                                                onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps", item.spis_id)}
-                                                                disabled={role === "viewer" || role === "approval"}
-                                                                className={`px-3 py-1 rounded flex items-center gap-1 ${
-                                                                role === "viewer" || role === "approval"
-                                                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                    : "bg-green-600 hover:bg-green-700 text-white"
-                                                                }`}
-                                                                title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPIS"}
-                                                            >
-                                                                <FaArrowRight /> SPIS
-                                                            </button>
-                                                        </>
-                                                    );
-                                                })()}
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-2 border text-center">
-                                            {(role !== "viewer" && role !== "approval") && (
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedDocNo(item.spis_doc_no);
-                                                        setShowConfirm(true);
-                                                    }}
-                                                    className="text-red-600 hover:text-red-800 flex items-center justify-center w-full h-full"
-                                                    title="Hapus Dokumen"
-                                                >
-                                                    <FaTrashAlt />
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
+                                                        // Default
+                                                        return (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleContinue(item.spps_doc_no || item.spis_doc_no, "spps", item.spis_id)}
+                                                                    disabled={role === "viewer" || role === "approval"}
+                                                                    className={`px-3 py-1 rounded flex items-center gap-1 ${
+                                                                    role === "viewer" || role === "approval"
+                                                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                        : "bg-green-600 hover:bg-green-700 text-white"
+                                                                    }`}
+                                                                    title={role === "viewer" ? "Akses dibatasi untuk Viewer" : "Lanjutkan Draft SPIS"}
+                                                                >
+                                                                    <FaArrowRight /> SPIS
+                                                                </button>
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-2 border text-center">
+                                                {(role !== "viewer" && role !== "approval") && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedDocNo(item.spis_doc_no);
+                                                            setShowConfirm(true);
+                                                        }}
+                                                        className="text-red-600 hover:text-red-800 flex items-center justify-center w-full h-full"
+                                                        title="Hapus Dokumen"
+                                                    >
+                                                        <FaTrashAlt />
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
                                     );
                                 })}
                             </tbody>
