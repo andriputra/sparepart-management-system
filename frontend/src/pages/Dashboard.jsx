@@ -2,6 +2,27 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import api from "../api/axios";
 import { FaClipboardList, FaRegFileAlt, FaUserCheck } from "react-icons/fa";
+import { Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export default function Dashboard() {
   const [overview, setOverview] = useState({
@@ -38,6 +59,121 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Error fetching recent data:", err);
     }
+  };
+
+  // Prepare data for the line chart
+  const groupedData = recentData.reduce((acc, item) => {
+    if (!item.created_at) return acc;
+  
+    const createdAt = new Date(item.created_at);
+    if (isNaN(createdAt)) return acc;
+  
+    const date = createdAt.toISOString().split("T")[0]; 
+  
+    if (!acc[date]) {
+      acc[date] = { Approved: 0, "Siap Approval": 0 };
+    }
+  
+    if (item.status === "Approved") {
+      acc[date].Approved += 1;
+    } else if (item.status === "Siap Approval") {
+      acc[date]["Siap Approval"] += 1;
+    }
+  
+    return acc;
+  }, {});
+
+  const labels = Object.keys(groupedData).sort();
+
+  const approvedData = labels.map((date) => groupedData[date].Approved);
+  const siapApprovalData = labels.map((date) => groupedData[date]["Siap Approval"]);
+
+  const data = {
+    labels,
+    datasets: [
+      {
+        label: "Approved",
+        data: approvedData,
+        borderColor: "rgba(34,197,94,1)", // Tailwind green-500
+        backgroundColor: "rgba(34,197,94,0.2)",
+        tension: 0.3,
+      },
+      {
+        label: "Siap Approval",
+        data: siapApprovalData,
+        borderColor: "rgba(239,68,68,1)", // Tailwind red-500
+        backgroundColor: "rgba(239,68,68,0.2)",
+        tension: 0.3,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top",
+        labels: {
+          font: {
+            size: 14,
+          },
+        },
+      },
+      title: {
+        display: true,
+        text: "Document Status Trend",
+        font: {
+          size: 18,
+          weight: "bold",
+        },
+        padding: {
+          top: 10,
+          bottom: 20,
+        },
+      },
+      tooltip: {
+        mode: "index",
+        intersect: false,
+      },
+    },
+    interaction: {
+      mode: "nearest",
+      intersect: false,
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Date",
+          font: {
+            size: 14,
+            weight: "bold",
+          },
+        },
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45,
+          maxTicksLimit: 10,
+        },
+        grid: {
+          display: false,
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Number of Documents",
+          font: {
+            size: 14,
+            weight: "bold",
+          },
+        },
+        beginAtZero: true,
+        grid: {
+          color: "#e5e7eb", // Tailwind gray-200
+        },
+      },
+    },
   };
 
   return (
@@ -85,61 +221,9 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
-        {/* === Recent Data Table === */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-4 text-gray-700">
-            Data Terbaru
-          </h2>
-
-          {recentData.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border border-gray-200 text-sm">
-                <thead>
-                  <tr className="bg-gray-100 text-left text-gray-600 uppercase text-xs">
-                    <th className="py-3 px-4 border-b">No. Dokumen</th>
-                    <th className="py-3 px-4 border-b">Part Number</th>
-                    <th className="py-3 px-4 border-b">Status</th>
-                    <th className="py-3 px-4 border-b">Dibuat Oleh</th>
-                    <th className="py-3 px-4 border-b">Tanggal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentData.map((item, index) => (
-                    <tr
-                      key={index}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="py-3 px-4 border-b text-gray-800 font-medium">
-                        {item.doc_no}
-                      </td>
-                      <td className="py-3 px-4 border-b">{item.part_number}</td>
-                      <td
-                        className={`py-3 px-4 border-b font-semibold ${
-                          item.status === "draft"
-                            ? "text-yellow-600"
-                            : item.status === "ready"
-                            ? "text-green-600"
-                            : "text-blue-600"
-                        }`}
-                      >
-                        {item.status.toUpperCase()}
-                      </td>
-                      <td className="py-3 px-4 border-b">{item.created_by}</td>
-                      <td className="py-3 px-4 border-b">
-                        {new Date(item.date).toLocaleDateString("id-ID")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-6">
-              Belum ada data terbaru.
-            </p>
-          )}
-        </div>
+        {/* <div className="bg-white p-6 rounded-lg shadow">
+          <Line data={data} options={options} />
+        </div> */}
       </div>
     </DashboardLayout>
   );

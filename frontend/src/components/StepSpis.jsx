@@ -55,6 +55,7 @@ export default function StepSpis({ onNext, initialData }) {
   // 🔹 Sinkronisasi state lokal dan Redux
   const [data, setData] = useState(initialData && Object.keys(initialData).length > 0 ? initialData : spis || defaultData);
   const [isDraftSaved, setIsDraftSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const images = Array.isArray(data.part_images)
     ? data.part_images
@@ -353,55 +354,148 @@ export default function StepSpis({ onNext, initialData }) {
     localStorage.setItem("spis_form_data", JSON.stringify(data));
   }, [data]);
   
+  // const handleSaveDraft = async () => {
+  //   try {
+  //     const userId = localStorage.getItem("user_id");
+  //     const token = localStorage.getItem("token");
+  //     if (!userId || !token) {
+  //       toast.error("Please login first.");
+  //       return;
+  //     }
+
+  //     // Validation: Require date field for draft
+  //     if (!data.date || data.date.toString().trim() === "") {
+  //       toast.warning("Tanggal wajib diisi sebelum menyimpan draft.");
+  //       return;
+  //     }
+
+  //     if (!data.part_number && !data.name) {
+  //       toast.warning("Isi minimal Part Number atau Name sebelum menyimpan draft.");
+  //       return;
+  //     }
+
+  //     let finalMaterials = data.part_material || [];
+  //     if (finalMaterials.includes("Other") && data.other_material) {
+  //       finalMaterials = finalMaterials.map((m) =>
+  //         m === "Other" ? `Other: ${data.other_material}` : m
+  //       );
+  //     }
+
+  //     const draftData = {
+  //       ...data,
+  //       part_material: finalMaterials,
+  //       part_images: serializeImages(data.part_images),
+  //     };
+
+  //     const res = await api.post(
+  //       "/spis/save-draft",
+  //       { user_id: userId, data: draftData },
+  //       { headers: { Authorization: `Bearer ${token}` } }
+  //     );
+
+  //     const spisId = res.data.id;
+  //     if (spisId) {
+  //       localStorage.setItem("spis_id", spisId);
+  //     }
+
+  //     toast.success("Draft saved successfully!");
+  //     setIsDraftSaved(true);
+  //   } catch (err) {
+  //     console.error("Error saving draft:", err);
+  //     toast.error("Failed to save draft. Please try again.");
+  //   }
+  // };
   const handleSaveDraft = async () => {
+    const userId = localStorage.getItem("user_id");
+    const token = localStorage.getItem("token");
+  
+    if (!userId || !token) {
+      toast.error("Silakan login terlebih dahulu.");
+      return;
+    }
+  
+    if (!data.date || data.date.trim() === "") {
+      toast.warning("Tanggal wajib diisi sebelum menyimpan draft.");
+      return;
+    }
+  
+    const toastId = toast.loading("Menyimpan draft... ⏳");
+  
     try {
-      const userId = localStorage.getItem("user_id");
-      const token = localStorage.getItem("token");
-      if (!userId || !token) {
-        toast.error("Please login first.");
-        return;
-      }
-
-      // Validation: Require date field for draft
-      if (!data.date || data.date.toString().trim() === "") {
-        toast.warning("Tanggal wajib diisi sebelum menyimpan draft.");
-        return;
-      }
-
-      if (!data.part_number && !data.name) {
-        toast.warning("Isi minimal Part Number atau Name sebelum menyimpan draft.");
-        return;
-      }
-
-      let finalMaterials = data.part_material || [];
-      if (finalMaterials.includes("Other") && data.other_material) {
-        finalMaterials = finalMaterials.map((m) =>
-          m === "Other" ? `Other: ${data.other_material}` : m
-        );
-      }
-
-      const draftData = {
-        ...data,
-        part_material: finalMaterials,
-        part_images: serializeImages(data.part_images),
+      setIsSaving(true);
+  
+      // 🧩 Fungsi upload satu file
+      const uploadImage = async (file) => {
+        if (!file) return "";
+        if (typeof file === "string" && file.startsWith("/uploads")) return file;
+  
+        if (file instanceof File) {
+          const form = new FormData();
+          form.append("photo", file);
+          const response = await api.post("/spis/upload-photo", form, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+          return response.data.photo_url;
+        }
+  
+        return "";
       };
-
-      const res = await api.post(
+  
+      // 🧠 Upload otomatis semua part_images
+      const uploadedPartImages = await Promise.all(
+        (data.part_images || []).map(async (img) => {
+          if (img.url && img.url.startsWith("/uploads")) return img;
+          if (img.file || (img.url && img.url.startsWith("blob:"))) {
+            const url = await uploadImage(img.file);
+            return { url, description: img.description };
+          }
+          return { url: "", description: img.description };
+        })
+      );
+  
+      // 🧩 Upload photo1 & photo2 jika perlu
+      const uploadedPhoto1 = data.photo1 instanceof File
+        ? await uploadImage(data.photo1)
+        : data.photo1_url;
+  
+      const uploadedPhoto2 = data.photo2 instanceof File
+        ? await uploadImage(data.photo2)
+        : data.photo2_url;
+  
+      // 💾 Bentuk data lengkap
+      const draftPayload = {
+        ...data,
+        status: "draft",
+        part_images: uploadedPartImages,
+        photo1_url: uploadedPhoto1,
+        photo2_url: uploadedPhoto2,
+      };
+  
+      // 🚀 Simpan ke backend
+      await api.post(
         "/spis/save-draft",
-        { user_id: userId, data: draftData },
+        { user_id: userId, data: draftPayload },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      const spisId = res.data.id;
-      if (spisId) {
-        localStorage.setItem("spis_id", spisId);
-      }
-
-      toast.success("Draft saved successfully!");
+  
+      toast.update(toastId, {
+        render: "✅ Draft berhasil disimpan!",
+        type: "success",
+        isLoading: false,
+        autoClose: 2500,
+      });
+  
       setIsDraftSaved(true);
-    } catch (err) {
-      console.error("Error saving draft:", err);
-      toast.error("Failed to save draft. Please try again.");
+    } catch (error) {
+      console.error("❌ Gagal menyimpan draft:", error);
+      toast.update(toastId, {
+        render: "❌ Gagal menyimpan draft. Coba lagi.",
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -786,7 +880,7 @@ export default function StepSpis({ onNext, initialData }) {
               type="button"
               className="border border-blue-400 bg-blue-100 text-blue-500 px-6 py-2 rounded hover:bg-blue-300"
             >
-              Save Draft
+              {isSaving ? "Saving..." : "Save Draft"}
             </button>
             <a
               href={`/document/view/SPIS/${encodeURIComponent(data.doc_no)}`}
