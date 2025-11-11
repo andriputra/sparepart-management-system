@@ -23,24 +23,6 @@ Didesain untuk mengelola dokumen SPIS, SPPS, SPQS dengan status draft, approval,
 
 ---
 
-## 📁 Struktur Project
-sparepart-management-system/
-│
-├── backend-node/
-│   ├── routes/
-│   ├── uploads/
-│   ├── config/db.js
-│   ├── server.js
-│   └── .env
-│
-└── frontend/
-├── src/
-├── public/
-├── vite.config.js
-└── .env
-
----
-
 ## 🧩 Persiapan Awal
 
 ### 1️⃣ Clone repository
