@@ -147,7 +147,7 @@ export default function SpqsQuality({ data }) {
                         </tr>
 
                     <tr>
-                        <td colSpan={3} className="border border-gray-500 p-1 px-3"><b>Komentar:</b><br/>
+                        <td colSpan={3} className="border border-gray-500 p-1 px-3" style={{ whiteSpace: "pre-line" }}><b>Komentar:</b><br/>
                             {data.comment}
                         </td> 
                     </tr>

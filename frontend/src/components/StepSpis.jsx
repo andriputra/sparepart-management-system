@@ -233,6 +233,16 @@ export default function StepSpis({ onNext, initialData }) {
         toast.error("Part Material wajib dipilih.");
         return;
       }
+
+      // Validasi photo1 dan photo2 wajib diunggah
+      if (!data.photo1 && !data.photo1_url) {
+        toast.error("Part Image 1 wajib diunggah.");
+        return;
+      }
+      if (!data.photo2 && !data.photo2_url) {
+        toast.error("Part Image 2 wajib diunggah.");
+        return;
+      }
   
       const requiredInspection = [
         "visual_condition",
@@ -616,13 +626,12 @@ export default function StepSpis({ onNext, initialData }) {
           required
         ></textarea>
 
-        <label className="block text-sm mb-1">Detail Part <span className="text-red-500">*</span></label>
+        <label className="block text-sm mb-1">Detail Part</label>
         <textarea
           name="detail_part"
           value={data.detail_part}
           onChange={handleChange}
           className="border p-2 w-full rounded mb-3"
-          required
         ></textarea>
         
         <div className="mt-6">

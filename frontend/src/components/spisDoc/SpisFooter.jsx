@@ -29,7 +29,7 @@ export default function SpisFooter({ data }) {
                     </tr>
                     <tr className="align-top h-40">
                         <td className="border border-gray-500 p-2 align-top h-full">
-                        <div className="h-full">{data.description || "-"}</div>
+                        <div className="h-full" style={{ whiteSpace: "pre-line" }}>{data.description || "-"}</div>
                         </td>
                     </tr>
                 </tbody>

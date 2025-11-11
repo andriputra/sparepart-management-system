@@ -2,6 +2,14 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios"; 
 export default function SpqsGeneralInfo({ data }) {
     const serverUrl = import.meta.env.VITE_SERVER_URL;
+    
+    const getImageSrc = (url) => {
+        if (!url) return "/placeholder-image.png";
+        if (url.startsWith("blob:")) return url;
+        if (url.startsWith("http")) return url;
+        if (url.startsWith("/uploads")) return `${serverUrl}${url}`;
+        return "/placeholder-image.png";
+    };
 
     const createdSignature =
         data.created_signature_url
@@ -23,27 +31,31 @@ export default function SpqsGeneralInfo({ data }) {
     const [photo2, setPhoto2] = useState("/placeholder-image.png");
 
     useEffect(() => {
-        if (data.photo1_url || data.photo2_url) {
-            if (data.photo1_url)
-                setPhoto1(data.photo1_url.startsWith("http") ? data.photo1_url : `${serverUrl}${data.photo1_url}`);
-            if (data.photo2_url)
-                setPhoto2(data.photo2_url.startsWith("http") ? data.photo2_url : `${serverUrl}${data.photo2_url}`);
-            return;
+        const isBlob = (url) => url && url.startsWith("blob:");
+      
+        if (
+          (data.photo1_url && !isBlob(data.photo1_url)) ||
+          (data.photo2_url && !isBlob(data.photo2_url))
+        ) {
+          if (data.photo1_url && !isBlob(data.photo1_url)) setPhoto1(getImageSrc(data.photo1_url));
+          if (data.photo2_url && !isBlob(data.photo2_url)) setPhoto2(getImageSrc(data.photo2_url));
+          return;
         }
-    
+      
+        // Jika data masih blob atau kosong → ambil ulang dari DB
         const fetchIllustration = async () => {
-            try {
-                if (!data.spis_id) return;
-                const res = await api.get(`/spareparts/spis/photo/${data.spis_id}`);
-                if (res.data?.photo1) setPhoto1(`${serverUrl}${res.data.photo1}`);
-                if (res.data?.photo2) setPhoto2(`${serverUrl}${res.data.photo2}`);
-            } catch (err) {
-                console.error("Error fetching SPQS illustration:", err);
-            }
+          try {
+            if (!data.spis_id) return;
+            const res = await api.get(`/spareparts/spis/photo/${data.spis_id}`);
+            if (res.data?.photo1) setPhoto1(getImageSrc(res.data.photo1));
+            if (res.data?.photo2) setPhoto2(getImageSrc(res.data.photo2));
+          } catch (err) {
+            console.error("Error fetching SPQS illustration:", err);
+          }
         };
-    
+      
         fetchIllustration();
-    }, [data, serverUrl]);
+      }, [data, serverUrl]);
 
     return (
         <>

@@ -11,13 +11,6 @@ export default function DocumentView() {
     const docType = type?.toUpperCase();
     const [data, setData] = useState(null);
 
-    const getImageSrc = (url) => {
-        if (!url) return "";
-        if (url.startsWith("blob:")) return url;
-        if (url.startsWith("/uploads")) return `${import.meta.env.VITE_API_BASE}${url}`;
-        return url;
-    };
-
     useEffect(() => {
         const fetchData = async () => {
             try {

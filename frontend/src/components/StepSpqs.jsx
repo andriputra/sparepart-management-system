@@ -148,7 +148,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         setData((prev) => ({
           ...prev,
           photo1_url: getFullImageUrl(spisData.photo1_url || spisData.photo1),
-photo2_url: getFullImageUrl(spisData.photo2_url || spisData.photo2),
+          photo2_url: getFullImageUrl(spisData.photo2_url || spisData.photo2),
           criteria: {
             ...prev.criteria,
             material: Array.isArray(materials)
@@ -384,9 +384,9 @@ photo2_url: getFullImageUrl(spisData.photo2_url || spisData.photo2),
                 <div key={crit} className="border p-3 rounded">
                   <label className="block text-sm font-semibold mb-1 capitalize">
                     {crit}
-                    {requiredCriteria.includes(crit) && (
+                    {/* {requiredCriteria.includes(crit) && (
                       <span className="text-red-500 ml-1">*</span>
-                    )}
+                    )} */}
                   </label>
                   <div className="flex items-center gap-2 mb-2">
                     <input
