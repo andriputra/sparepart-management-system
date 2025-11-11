@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import api from "../api/axios";
-import { FaClipboardList, FaRegFileAlt, FaUserCheck } from "react-icons/fa";
+import { FaClipboardList, FaRegFileAlt, FaUserCheck, FaUserEdit } from "react-icons/fa";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -43,7 +43,11 @@ export default function Dashboard() {
       const res = await api.get("/dashboard/overview", {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log('Fatch Data', res)
       setOverview(res.data);
+      setOverview((prev) => ({
+        ...res.data,
+      }));
     } catch (err) {
       console.error("Error fetching overview:", err);
     }
@@ -64,22 +68,10 @@ export default function Dashboard() {
   // Prepare data for the line chart
   const groupedData = recentData.reduce((acc, item) => {
     if (!item.created_at) return acc;
-  
-    const createdAt = new Date(item.created_at);
-    if (isNaN(createdAt)) return acc;
-  
-    const date = createdAt.toISOString().split("T")[0]; 
-  
-    if (!acc[date]) {
-      acc[date] = { Approved: 0, "Siap Approval": 0 };
-    }
-  
-    if (item.status === "Approved") {
-      acc[date].Approved += 1;
-    } else if (item.status === "Siap Approval") {
-      acc[date]["Siap Approval"] += 1;
-    }
-  
+    const date = new Date(item.created_at).toISOString().split("T")[0];
+    if (!acc[date]) acc[date] = { Approved: 0, "Siap Approval": 0 };
+    if (item.status === "Approved") acc[date].Approved += 1;
+    else if (item.status === "Siap Approval") acc[date]["Siap Approval"] += 1;
     return acc;
   }, {});
 
@@ -88,93 +80,6 @@ export default function Dashboard() {
   const approvedData = labels.map((date) => groupedData[date].Approved);
   const siapApprovalData = labels.map((date) => groupedData[date]["Siap Approval"]);
 
-  const data = {
-    labels,
-    datasets: [
-      {
-        label: "Approved",
-        data: approvedData,
-        borderColor: "rgba(34,197,94,1)", // Tailwind green-500
-        backgroundColor: "rgba(34,197,94,0.2)",
-        tension: 0.3,
-      },
-      {
-        label: "Siap Approval",
-        data: siapApprovalData,
-        borderColor: "rgba(239,68,68,1)", // Tailwind red-500
-        backgroundColor: "rgba(239,68,68,0.2)",
-        tension: 0.3,
-      },
-    ],
-  };
-
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: "top",
-        labels: {
-          font: {
-            size: 14,
-          },
-        },
-      },
-      title: {
-        display: true,
-        text: "Document Status Trend",
-        font: {
-          size: 18,
-          weight: "bold",
-        },
-        padding: {
-          top: 10,
-          bottom: 20,
-        },
-      },
-      tooltip: {
-        mode: "index",
-        intersect: false,
-      },
-    },
-    interaction: {
-      mode: "nearest",
-      intersect: false,
-    },
-    scales: {
-      x: {
-        title: {
-          display: true,
-          text: "Date",
-          font: {
-            size: 14,
-            weight: "bold",
-          },
-        },
-        ticks: {
-          maxRotation: 45,
-          minRotation: 45,
-          maxTicksLimit: 10,
-        },
-        grid: {
-          display: false,
-        },
-      },
-      y: {
-        title: {
-          display: true,
-          text: "Number of Documents",
-          font: {
-            size: 14,
-            weight: "bold",
-          },
-        },
-        beginAtZero: true,
-        grid: {
-          color: "#e5e7eb", // Tailwind gray-200
-        },
-      },
-    },
-  };
 
   return (
     <DashboardLayout>
@@ -202,7 +107,7 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-red-400 text-white p-6 rounded-lg shadow flex items-center gap-4">
-            <FaUserCheck className="text-4xl opacity-80" />
+            <FaUserEdit className="text-4xl opacity-80" />
             <div>
               <p className="text-sm uppercase text-green-100">
                 Siap Approval
@@ -221,9 +126,52 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        {/* <div className="bg-white p-6 rounded-lg shadow">
-          <Line data={data} options={options} />
-        </div> */}
+        <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
+          <h2 className="text-lg font-semibold mb-4 text-gray-700">Completion Rate</h2>
+          <div className="w-full bg-gray-200 rounded-full h-4">
+            <div
+              className="bg-green-500 h-4 rounded-full"
+              style={{ width: `${(overview.totalApproved / overview.totalData) * 100}%` }}
+            ></div>
+          </div>
+          <p className="text-sm text-gray-600 mt-2">
+            {overview.totalApproved} of {overview.totalData} approved
+          </p>
+        </div>
+        {/* === Recent Data Chart === */}
+          <div className="bg-white p-6 rounded-lg shadow mb-10">
+            <h2 className="text-lg font-semibold mb-4 text-gray-700">Recent Activity Trend</h2>
+            <Line
+              data={{
+                labels,
+                datasets: [
+                  {
+                    label: "Approved",
+                    data: approvedData,
+                    borderColor: "#16a34a",
+                    backgroundColor: "rgba(22,163,74,0.2)",
+                    tension: 0.4,
+                  },
+                  {
+                    label: "Siap Approval",
+                    data: siapApprovalData,
+                    borderColor: "#facc15",
+                    backgroundColor: "rgba(250,204,21,0.2)",
+                    tension: 0.4,
+                  },
+                ],
+              }}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: { position: "top" },
+                },
+                scales: {
+                  y: { beginAtZero: true },
+                },
+              }}
+            />
+          </div>
       </div>
     </DashboardLayout>
   );

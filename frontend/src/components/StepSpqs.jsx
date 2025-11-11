@@ -252,23 +252,23 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
   };
 
   const handleSubmit = async () => {
-    const requiredFields = [
-      { value: data.doc_no, name: "doc_no" },
-      { value: data.date, name: "date" },
-      { value: data.part_number, name: "part_number" },
-      { value: data.part_description, name: "part_description" },
-      { value: data.supplier, name: "supplier" },
-      { value: data.criteria.package_dimension, name: "criteria.package_dimension" },
-      { value: data.criteria.weight, name: "criteria.weight" },
-      { value: data.criteria.material, name: "criteria.material" },
-    ];
-    const hasEmptyRequired = requiredFields.some(
-      (f) => f.value === undefined || f.value === null || f.value === ""
-    );
-    if (hasEmptyRequired) {
-      toast.error("Harap isi semua field yang wajib diisi (*)");
-      return;
-    }
+    // const requiredFields = [
+    //   { value: data.doc_no, name: "doc_no" },
+    //   { value: data.date, name: "date" },
+    //   { value: data.part_number, name: "part_number" },
+    //   { value: data.part_description, name: "part_description" },
+    //   { value: data.supplier, name: "supplier" },
+    //   { value: data.criteria.package_dimension, name: "criteria.package_dimension" },
+    //   { value: data.criteria.weight, name: "criteria.weight" },
+    //   { value: data.criteria.material, name: "criteria.material" },
+    // ];
+    // const hasEmptyRequired = requiredFields.some(
+    //   (f) => f.value === undefined || f.value === null || f.value === ""
+    // );
+    // if (hasEmptyRequired) {
+    //   toast.error("Harap isi semua field yang wajib diisi (*)");
+    //   return;
+    // }
     try {
       const userId = localStorage.getItem("user_id");
       const spisId = localStorage.getItem("spis_id");
