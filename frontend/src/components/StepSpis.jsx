@@ -218,7 +218,6 @@ export default function StepSpis({ onNext, initialData }) {
         { key: "part_number", label: "Part Number" },
         { key: "part_description", label: "Part Deskripsi" },
         { key: "supplier", label: "Supplier" },
-        { key: "detail_part", label: "Detail Part" },
         { key: "description", label: "Keterangan" },
       ];
   
@@ -364,57 +363,6 @@ export default function StepSpis({ onNext, initialData }) {
     localStorage.setItem("spis_form_data", JSON.stringify(data));
   }, [data]);
   
-  // const handleSaveDraft = async () => {
-  //   try {
-  //     const userId = localStorage.getItem("user_id");
-  //     const token = localStorage.getItem("token");
-  //     if (!userId || !token) {
-  //       toast.error("Please login first.");
-  //       return;
-  //     }
-
-  //     // Validation: Require date field for draft
-  //     if (!data.date || data.date.toString().trim() === "") {
-  //       toast.warning("Tanggal wajib diisi sebelum menyimpan draft.");
-  //       return;
-  //     }
-
-  //     if (!data.part_number && !data.name) {
-  //       toast.warning("Isi minimal Part Number atau Name sebelum menyimpan draft.");
-  //       return;
-  //     }
-
-  //     let finalMaterials = data.part_material || [];
-  //     if (finalMaterials.includes("Other") && data.other_material) {
-  //       finalMaterials = finalMaterials.map((m) =>
-  //         m === "Other" ? `Other: ${data.other_material}` : m
-  //       );
-  //     }
-
-  //     const draftData = {
-  //       ...data,
-  //       part_material: finalMaterials,
-  //       part_images: serializeImages(data.part_images),
-  //     };
-
-  //     const res = await api.post(
-  //       "/spis/save-draft",
-  //       { user_id: userId, data: draftData },
-  //       { headers: { Authorization: `Bearer ${token}` } }
-  //     );
-
-  //     const spisId = res.data.id;
-  //     if (spisId) {
-  //       localStorage.setItem("spis_id", spisId);
-  //     }
-
-  //     toast.success("Draft saved successfully!");
-  //     setIsDraftSaved(true);
-  //   } catch (err) {
-  //     console.error("Error saving draft:", err);
-  //     toast.error("Failed to save draft. Please try again.");
-  //   }
-  // };
   const handleSaveDraft = async () => {
     const userId = localStorage.getItem("user_id");
     const token = localStorage.getItem("token");
