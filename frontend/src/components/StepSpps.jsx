@@ -47,7 +47,8 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         new URLSearchParams(window.location.search).get("spps_id");
       if (!sppsId) return;
       try {
-        const res = await api.get(`/spareparts/spps/by-id/${sppsId}`);
+        // const res = await api.get(`/spareparts/spps/by-id/${sppsId}`);
+        const res = await api.get(`/spps/by-id/${sppsId}`);
         if (res.data) {
           const spps = res.data;
           let parsedInspection = {};
@@ -75,6 +76,12 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
             approved_by: spps.approved_by || prev.approved_by,
             package_material: spps.package_material || prev.package_material,
             package_code: spps.package_code || prev.package_code,
+            package_material_0: spps.package_material_0 || prev.package_material_0,
+            package_code_1: spps.package_code_1 || prev.package_code_1,
+            package_material_1: spps.package_material_1 || prev.package_material_1,
+            package_code_2: spps.package_code_2 || prev.package_code_2,
+            package_material_2: spps.package_material_2 || prev.package_material_2,
+            package_code_3: spps.package_code_3 || prev.package_code_3,
             package_detail: spps.package_detail || prev.package_detail,
             // illustration_part: keep from SPIS if not changed, otherwise use spps.illustration_part
             illustration_part:
@@ -115,6 +122,12 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
     approved_by: "",
     package_material: "",
     package_code: "",
+    package_material_0: "",
+    package_code_0: "",
+    package_material_1: "",
+    package_code_1: "",
+    package_material_2: "",
+    package_code_2: "",
     package_detail: "",
     illustration_part: null,
   };
@@ -320,6 +333,12 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         "part_dimension",
         "package_material",
         "package_code",
+        "package_material_0",
+        "package_code_0",
+        "package_material_1",
+        "package_code_1",
+        "package_material_2",
+        "package_code_2",
         "detail_part",
         "package_detail",
         "created_by",
@@ -353,6 +372,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       // Tambahkan hubungan SPIS dan User
       formData.append("spis_id", spisId);
       formData.append("user_id", userId);
+      formData.append("status", "submitted");
 
       let response;
       if (existingSppsId) {
@@ -402,7 +422,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
           <div key={f.name}>
             <label className="block text-sm mb-1">
               {f.label}
-              {["doc_no", "date", "part_number", "supplier", "part_description", "detail_part", "part_weight", "part_dimension", "qty"].includes(f.name) && (
+              {["doc_no", "date", "part_number", "supplier", "part_description", "part_weight", "part_dimension", "qty"].includes(f.name) && (
                 <span className="text-red-500">*</span>
               )}
             </label>
@@ -415,7 +435,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
               className={`border p-2 w-full rounded ${
                 f.readOnly ? "bg-gray-100 text-gray-600 cursor-not-allowed" : ""
               }`}
-              required={["doc_no", "date", "part_number", "supplier", "part_description", "detail_part", "part_weight", "part_dimension", "qty"].includes(f.name)}
+              required={["doc_no", "date", "part_number", "supplier", "part_description", "part_weight", "part_dimension", "qty"].includes(f.name)}
             />
           </div>
         ))}
@@ -424,23 +444,35 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
       {/* Package Info */}
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Package Information</h3>
-        <label className="block text-sm mb-1">Package Material</label>
-        <input
-          type="text"
-          name="package_material"
-          value={data.package_material}
-          onChange={handleChange}
-          className="border p-2 w-full rounded mb-3"
-        />
+        <div className="mb-3 space-y-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex flex-row gap-4 w-full bg-gray-100 p-3 rounded">
+              <div className="flex flex-col flex-1">
+                <label className="text-sm font-medium">Package Material {i + 1}</label>
+                <input
+                  type="text"
+                  name={`package_material_${i}`}
+                  value={data[`package_material_${i}`] || ""}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                  required={i === 0}
+                />
+              </div>
 
-        <label className="block text-sm mb-1">Package Code</label>
-        <input
-          type="text"
-          name="package_code"
-          value={data.package_code}
-          onChange={handleChange}
-          className="border p-2 w-full rounded mb-3"
-        />
+              <div className="flex flex-col flex-1">
+                <label className="text-sm font-medium">Package Code {i + 1}</label>
+                <input
+                  type="text"
+                  name={`package_code_${i}`}
+                  value={data[`package_code_${i}`] || ""}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                  required={i === 0}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
 
         <label className="block text-sm mb-1">Package Detail</label>
         <textarea

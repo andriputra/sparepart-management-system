@@ -67,6 +67,16 @@ router.post("/", async (req, res) => {
       bend: surface.bend ? 1 : 0,
     };
 
+    const surfaceRemark = criteria.surface_remark || {};
+    const safeSurfaceRemark = {
+      wear: surfaceRemark.wear || "",
+      damage: surfaceRemark.damage || "",
+      scratch: surfaceRemark.scratch || "",
+      crack: surfaceRemark.crack || "",
+      corrosion: surfaceRemark.corrosion || "",
+      bend: surfaceRemark.bend || "",
+    };
+
     const safeResult = result || "Pass";
     const safeComment = comment || "";
     const safeCreatedBy = created_by || "";
@@ -85,9 +95,10 @@ router.post("/", async (req, res) => {
         criteria_function, criteria_function_ok, criteria_function_remark,
         criteria_completeness, criteria_completeness_ok, criteria_completeness_remark,
         surface_wear, surface_damage, surface_scratch, surface_crack, surface_corrosion, surface_bend,
+        surface_wear_remark, surface_damage_remark, surface_scratch_remark, surface_crack_remark, surface_corrosion_remark, surface_bend_remark,
         result, comment, created_by, approved_by, checked_by, status, data_json, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         spis_id,
         user_id,
@@ -120,13 +131,19 @@ router.post("/", async (req, res) => {
         safeSurface.crack,
         safeSurface.corrosion,
         safeSurface.bend,
+        safeSurfaceRemark.wear,
+        safeSurfaceRemark.damage,
+        safeSurfaceRemark.scratch,
+        safeSurfaceRemark.crack,
+        safeSurfaceRemark.corrosion,
+        safeSurfaceRemark.bend,
         safeResult,
         safeComment,
         safeCreatedBy,
         safeApprovedBy,
         safeCheckedBy,
         "submitted",
-        JSON.stringify(req.body || {}) // 🧩 inilah yang tadinya hilang!
+        JSON.stringify(req.body || {})
       ]
     );
 

@@ -61,7 +61,11 @@ router.post("/", upload.any(), async (req, res) => {
     const allowedFields = [
       "date", "part_number", "supplier", "part_description", "qty",
       "part_weight", "part_dimension", "created_by", "approved_by", "detail_part",
-      "package_material", "package_code", "package_detail", 
+      "package_material", "package_code", 
+      "package_material_0", "package_code_0",
+      "package_material_1", "package_code_1",
+      "package_material_2", "package_code_2",
+      "package_detail", 
       "spis_id", "user_id", "status",
       "package_0", "package_1", "package_2", "package_3",
       "package_illustration_0", "package_illustration_1", "result_illustration"
@@ -69,11 +73,12 @@ router.post("/", upload.any(), async (req, res) => {
 
     const rawData = { ...fields, ...uploadedFiles };
     const finalData = Object.keys(rawData)
-      .filter((key) => allowedFields.includes(key))
+      .filter((key) => key && allowedFields.includes(key))
       .reduce((obj, key) => {
         obj[key] = rawData[key];
         return obj;
       }, {});
+    finalData.status = "submitted";
 
     // 🔹 Pastikan doc_no benar
     finalData.doc_no = nextDocNo;
@@ -84,7 +89,7 @@ router.post("/", upload.any(), async (req, res) => {
 
     res.json({ message: "SPPS saved successfully", id: result.insertId, doc_no: nextDocNo });
   } catch (err) {
-    console.error("❌ Error saving SPPS:", err);
+    console.error("Error saving SPPS:", err);
     res.status(500).json({ error: "Failed to save SPPS" });
   }
 });
@@ -125,9 +130,11 @@ router.get("/by-doc/:doc_no", async (req, res) => {
     const [rows] = await db.query(
       `SELECT 
           s.*, 
+          sp.inspection AS spis_inspection,
           COALESCE(uc.signature_url, uc2.signature_url) AS created_signature_url,
           COALESCE(ua.signature_url, ua2.signature_url) AS approved_signature_url
        FROM spps s
+       LEFT JOIN spis sp ON sp.id = s.spis_id
        LEFT JOIN users uc ON uc.fullname = s.created_by
        LEFT JOIN users uc2 ON uc2.name = s.created_by
        LEFT JOIN users ua ON ua.fullname = s.approved_by
@@ -187,6 +194,12 @@ router.put("/:id", upload.any(), async (req, res) => {
       "detail_part",
       "package_material",
       "package_code",
+      "package_material_0",
+      "package_code_0",
+      "package_material_1",
+      "package_code_1",
+      "package_material_2",
+      "package_code_2",
       "package_detail",
       "package_0",
       "package_1",
@@ -200,11 +213,12 @@ router.put("/:id", upload.any(), async (req, res) => {
     // Gabung dan filter
     const rawData = { ...fields, ...uploadedFiles };
     const finalData = Object.keys(rawData)
-      .filter((key) => allowedFields.includes(key))
+      .filter((key) => key && allowedFields.includes(key))
       .reduce((obj, key) => {
         obj[key] = rawData[key];
         return obj;
       }, {});
+    finalData.status = "submitted";
 
     // ✅ Tambahkan safety check
     if (Object.keys(finalData).length === 0) {
@@ -358,6 +372,7 @@ router.get("/by-id/:id", async (req, res) => {
         spps.data_json = {};
       }
     }
+    
 
     res.json(spps);
   } catch (err) {

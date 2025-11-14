@@ -2,7 +2,7 @@ import { FiCheck, FiX } from "react-icons/fi";
 export default function SpqsQuality({ data }) {
     const serverUrl = import.meta.env.VITE_SERVER_URL;
     const renderCheck = (value) => {
-        if (value === 1 || value === "1") {
+        if (value === 1 || value === "1" || value === true) {
             return <FiCheck className="text-green-600 mx-auto" size={18} />;
         }
         return <FiX className="text-red-600 mx-auto" size={18} />;
@@ -61,7 +61,7 @@ export default function SpqsQuality({ data }) {
                         <td className="border border-gray-500 p-1">Fungsi</td>
                         <td className="border border-gray-500 p-1">{data.criteria_function_remark || 'Sesuai dengan standar kualitas'}</td>
                         <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_function_ok || data.criteria.function_ok)}</td>
-                        <td className="border border-gray-500 p-1">{data.criteria_function || data.criteria.function || '-'}</td>
+                        <td className="border border-gray-500 p-1">{data.criteria_function || data.criteria.function_remark || '-'}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">6</td>
@@ -75,42 +75,42 @@ export default function SpqsQuality({ data }) {
                         <td className="border border-gray-500 p-1">Kondisi Part</td>
                         <td className="border border-gray-500 p-1">Keausan</td>
                         <td className="border border-gray-500 p-1 text-center">{renderCheck(data.surface_bend || data.criteria.surface.bend)}</td>
-                        <td className="border border-gray-500 p-1"></td>
+                        <td className="border border-gray-500 p-1">{data.criteria.surface_remark.bend}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1">Kerusakan</td>
                         <td className="border border-gray-500 p-1 text-center">{renderCheck(data.surface_damage || data.criteria.surface.damage)}</td>
-                        <td className="border border-gray-500 p-1"></td>
+                        <td className="border border-gray-500 p-1">{data.criteria.surface_remark.damage}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1">Goresan</td>
                         <td className="border border-gray-500 p-1 text-center">{renderCheck(data.surface_scratch || data.criteria.surface.scratch)}</td>
-                        <td className="border border-gray-500 p-1"></td>
+                        <td className="border border-gray-500 p-1">{data.criteria.surface_remark.scratch}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1">Pecah</td>
                         <td className="border border-gray-500 p-1 text-center">{renderCheck(data.surface_crack || data.criteria.surface.crack)}</td>
-                        <td className="border border-gray-500 p-1"></td>
+                        <td className="border border-gray-500 p-1">{data.criteria.surface_remark.crack}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1">Karat</td>
                         <td className="border border-gray-500 p-1 text-center">{renderCheck(data.surface_corrosion || data.criteria.surface.corrosion)}</td>
-                        <td className="border border-gray-500 p-1"></td>
+                        <td className="border border-gray-500 p-1">{data.criteria.surface_remark.corrosion}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1">Bengkok</td>
                         <td className="border border-gray-500 p-1 text-center">{renderCheck(data.surface_wear || data.criteria.surface.wear)}</td>
-                        <td className="border border-gray-500 p-1"></td>
+                        <td className="border border-gray-500 p-1">{data.criteria.surface_remark.wear}</td>
                     </tr>
                 </tbody>
             </table>

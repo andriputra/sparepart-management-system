@@ -59,6 +59,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         corrosion: false,
         bend: false,
       },
+      surface_remark: {},
     },
     result: "Pass",
     comment: "",
@@ -99,7 +100,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         weight: initialData.inspection?.weight || prev.criteria.weight,
         material: Array.isArray(initialData.part_material) ? initialData.part_material.join(", ") : prev.criteria.material,
         finishing: initialData.inspection?.visual_condition || prev.criteria.finishing,
-        function: initialData.inspection?.part_system || prev.criteria.function,
+        function: initialData.inspection?.function || prev.criteria.function,
         completeness: initialData.inspection?.completeness || prev.criteria.completeness,
       },
     }));
@@ -111,7 +112,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
       if (!spisId) return;
 
       try {
-        const res = await api.get(`/spareparts/spis/by-id/${spisId}`);
+        const res = await api.get(`/spis/by-id/${spisId}`);
         const spisData = res.data;
 
         const inspection = typeof spisData.inspection === "string"
@@ -140,7 +141,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
                 ? materials.join(", ")
                 : materials || prev.criteria.material,
               finishing: inspection.visual_condition || prev.criteria.finishing,
-              function: inspection.part_system || prev.criteria.function,
+              function: inspection.function || prev.criteria.function,
               completeness: inspection.completeness || prev.criteria.completeness,
             },
           }));
@@ -252,23 +253,6 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
   };
 
   const handleSubmit = async () => {
-    // const requiredFields = [
-    //   { value: data.doc_no, name: "doc_no" },
-    //   { value: data.date, name: "date" },
-    //   { value: data.part_number, name: "part_number" },
-    //   { value: data.part_description, name: "part_description" },
-    //   { value: data.supplier, name: "supplier" },
-    //   { value: data.criteria.package_dimension, name: "criteria.package_dimension" },
-    //   { value: data.criteria.weight, name: "criteria.weight" },
-    //   { value: data.criteria.material, name: "criteria.material" },
-    // ];
-    // const hasEmptyRequired = requiredFields.some(
-    //   (f) => f.value === undefined || f.value === null || f.value === ""
-    // );
-    // if (hasEmptyRequired) {
-    //   toast.error("Harap isi semua field yang wajib diisi (*)");
-    //   return;
-    // }
     try {
       const userId = localStorage.getItem("user_id");
       const spisId = localStorage.getItem("spis_id");
@@ -384,9 +368,6 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
                 <div key={crit} className="border p-3 rounded">
                   <label className="block text-sm font-semibold mb-1 capitalize">
                     {crit}
-                    {/* {requiredCriteria.includes(crit) && (
-                      <span className="text-red-500 ml-1">*</span>
-                    )} */}
                   </label>
                   <div className="flex items-center gap-2 mb-2">
                     <input
@@ -405,7 +386,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
                     />
                     <span className="text-sm text-gray-700">Sesuai spesifikasi</span>
                   </div>
-                  {crit !== "completeness" && (
+                  {crit !== "completeness" && crit !== "function" && (
                     <input
                       type="text"
                       name={crit}
@@ -443,15 +424,37 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         <h3 className="font-semibold mb-2">Kondisi Permukaan</h3>
         <div className="grid grid-cols-3 gap-3">
           {Object.keys(data.criteria.surface).map((key) => (
-            <label key={key} className="flex items-center gap-2">
+            <div key={key} className="flex flex-col border p-3 rounded">
+              <label className="flex items-center gap-2 mb-2">
+                <input
+                  type="checkbox"
+                  name={`surface.${key}`}
+                  checked={data.criteria.surface[key]}
+                  onChange={handleChange}
+                />
+                <span className="capitalize">{key}</span>
+              </label>
+
               <input
-                type="checkbox"
-                name={`surface.${key}`}
-                checked={data.criteria.surface[key]}
-                onChange={handleChange}
+                type="text"
+                name={`surface_remark.${key}`}
+                value={data.criteria.surface_remark?.[key] || ""}
+                onChange={(e) =>
+                  setData((prev) => ({
+                    ...prev,
+                    criteria: {
+                      ...prev.criteria,
+                      surface_remark: {
+                        ...prev.criteria.surface_remark,
+                        [key]: e.target.value,
+                      },
+                    },
+                  }))
+                }
+                className="border p-2 rounded text-sm"
+                placeholder="Berikan keterangan (jika ada)"
               />
-              <span className="capitalize">{key}</span>
-            </label>
+            </div>
           ))}
         </div>
       </div>

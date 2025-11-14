@@ -289,7 +289,7 @@ export default function StepSpis({ onNext, initialData }) {
       formData.append("supplier", data.supplier);
       formData.append("part_description", data.part_description);
       formData.append("description", data.description);
-      formData.append("detail_part", data.detail_part);
+      formData.append("detail_part", data.detail_part?.trim() || "-");
       formData.append("created_by", data.created_by);
       formData.append("approved_by", data.approved_by || "");
   

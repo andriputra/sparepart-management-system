@@ -1,5 +1,6 @@
 export default function SppsGeneralInfo({ data }) {
     const serverUrl = import.meta.env.VITE_SERVER_URL;
+    const inspection = data.spis_inspection ? JSON.parse(data.spis_inspection) : null;
 
     const createdSignature =
         data.created_signature_url
@@ -37,11 +38,15 @@ export default function SppsGeneralInfo({ data }) {
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 font-semibold">Berat Part</td>
-                        <td className="border border-gray-500 p-1">{data.part_weight || "-"}</td>
+                        <td className="border border-gray-500 p-1">{data.part_weight || "-"} Kg</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 font-semibold">Dimensi Part</td>
-                        <td className="border border-gray-500 p-1">{data.part_dimension || "-"}</td>
+                        <td className="border border-gray-500 p-1">
+                            {inspection?.length && inspection?.width && inspection?.height
+                                ? `${inspection.length} x ${inspection.width} x ${inspection.height}`
+                                : data.part_dimension || "-"}
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -103,16 +108,26 @@ export default function SppsGeneralInfo({ data }) {
             <table className="w-full border border-gray-500 text-sm mb-4">
                 <thead>
                     <tr>
-                        <td className="border border-gray-500 p-1 font-semibold">No</td>
+                        <td className="border border-gray-500 p-1 font-semibold text-center">No</td>
                         <td className="border border-gray-500 p-1 font-semibold">Material Kemasan</td>
                         <td className="border border-gray-500 p-1 font-semibold">Code</td>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td className="border border-gray-500 p-1">1</td>
-                        <td className="border border-gray-500 p-1">{data.package_material || "-"}</td>
-                        <td className="border border-gray-500 p-1">{data.package_code || "-"}</td>
+                        <td className="border border-gray-500 p-1 text-center">1</td>
+                        <td className="border border-gray-500 p-1">{data.package_material_0 || "-"}</td>
+                        <td className="border border-gray-500 p-1">{data.package_code_0 || "-"}</td>
+                    </tr>
+                    <tr>
+                        <td className="border border-gray-500 p-1 text-center">2</td>
+                        <td className="border border-gray-500 p-1">{data.package_material_1 || "-"}</td>
+                        <td className="border border-gray-500 p-1">{data.package_code_1 || "-"}</td>
+                    </tr>
+                    <tr>
+                        <td className="border border-gray-500 p-1 text-center">3</td>
+                        <td className="border border-gray-500 p-1">{data.package_material_2 || "-"}</td>
+                        <td className="border border-gray-500 p-1">{data.package_code_2 || "-"}</td>
                     </tr>
                 </tbody>
             </table>
@@ -123,8 +138,8 @@ export default function SppsGeneralInfo({ data }) {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td className="border border-gray-500 p-1">{data.package_detail || "-"}</td>
+                    <tr className="h-[87px]">
+                        <td className="border border-gray-500 p-1 align-top">{data.package_detail || "-"}</td>
                     </tr>
                 </tbody>
             </table>

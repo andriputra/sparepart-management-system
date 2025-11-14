@@ -42,13 +42,13 @@ export default function SppsImages({ data }) {
   const result_illustration2 = getImageSrc(data.package_illustration_1_url || data.package_illustration_1);
 
   return (
-    <div className="flex gap-6 items-stretch">
+    <div className="flex gap-6 items-start">
         <table className="w-full border border-gray-500 text-sm mb-6">
             <tbody>
-                <tr className="align-center justify-start h-full bg-gray-100">
+                <tr className="align-center justify-start bg-gray-100">
                     <td className="border border-gray-500 px-3 py-2 font-semibold">Illustrasi Part</td>
                 </tr>
-                <tr className="h-80">
+                <tr className="h-[420px]">
                     <td className="border border-gray-500 p-3">
                     <img
                         src={getImageSrc(data.photo1_url || illustrationPart)}
@@ -58,10 +58,10 @@ export default function SppsImages({ data }) {
                     </td>
                 </tr>
 
-                <tr className="align-top items-start h-full  bg-gray-100">
+                <tr className="align-top items-start  bg-gray-100">
                     <td className="border border-gray-500 px-3 py-2 font-semibold">Illustrasi Kemasan</td>
                 </tr>
-                <tr className="h-96">
+                <tr className="h-80">
                     <td className="border border-gray-500 p-3">
                     <div className="flex gap-3 justify-center items-center">
                         <img
@@ -88,9 +88,9 @@ export default function SppsImages({ data }) {
                 <tr className="bg-gray-100">
                     <td className="border border-gray-500 px-3 py-2 font-semibold">Kemasan</td>
                 </tr>
-                <tr className="h-90">
+                <tr className="h-[420px]">
                     <td className="border border-gray-500 p-3">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 h-96">
                         {packageImages.length > 0 ? (
                         packageImages.map((img, index) => (
                             <img
@@ -111,7 +111,7 @@ export default function SppsImages({ data }) {
                 <tr className="bg-gray-100">
                     <td className="border border-gray-500 px-3 py-2 font-semibold">Hasil</td>
                 </tr>
-                <tr>
+                <tr className="h-80">
                     <td className="border border-gray-500 p-3">
                     <img
                         src={result_package}
