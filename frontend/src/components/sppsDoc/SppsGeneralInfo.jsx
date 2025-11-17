@@ -48,10 +48,6 @@ export default function SppsGeneralInfo({ data }) {
                                 : data.part_dimension || "-"}
                         </td>
                     </tr>
-                </tbody>
-            </table>
-            <table className="w-full border border-gray-500 text-sm mb-6">
-                <tbody>
                     <tr>
                         <td className="border border-gray-500 p-1 font-semibold">Suplier</td>
                         <td className="border border-gray-500 p-1">{data.supplier}</td>
@@ -60,6 +56,10 @@ export default function SppsGeneralInfo({ data }) {
                         <td className="border border-gray-500 p-1 font-semibold">Detail Part</td>
                         <td className="border border-gray-500 p-1">{data.detail_part || "-"}</td>
                     </tr>
+                </tbody>
+            </table>
+            <table className="w-full border border-gray-500 text-sm mb-6">
+                <tbody>
                     <tr>
                         <td className="border border-gray-500 p-1 font-semibold">Tanggal</td>
                         <td className="border border-gray-500 p-1">{data.date ? new Date(data.date).toLocaleDateString("id-ID") : "-"}</td>
@@ -69,20 +69,20 @@ export default function SppsGeneralInfo({ data }) {
                         <td colSpan="1" className="border border-black p-1 text-center font-semibold">Menyetujui</td>
                     </tr>
                     <tr>
-                        <td className="border border-black h-24 text-center align-bottom">
+                        <td className="border border-black h-[116px] text-center align-bottom">
                             <img
                                 src={createdSignature}
                                 alt="Tanda Tangan PIC"
-                                className="mx-auto h-16 object-contain mb-3"
+                                className="mx-auto h-16 object-contain mb-4"
                             />
                         </td>
-                        <td className="border border-black h-24 text-center align-bottom">
+                        <td className="border border-black [116px] text-center align-bottom">
                             {isApproved ? (
                                 <>
                                     <img
                                         src={approvedSignature}
                                         alt="Signature Approved By"
-                                        className="mx-auto max-h-16 object-contain mb-3"
+                                        className="mx-auto max-h-16 object-contain mb-4"
                                     />
                                 </>
                             ) : (

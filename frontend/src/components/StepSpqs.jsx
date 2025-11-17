@@ -99,7 +99,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         package_dimension: initialData.inspection?.package_dimension || prev.criteria.package_dimension,
         weight: initialData.inspection?.weight || prev.criteria.weight,
         material: Array.isArray(initialData.part_material) ? initialData.part_material.join(", ") : prev.criteria.material,
-        finishing: initialData.inspection?.visual_condition || prev.criteria.finishing,
+        finishing: prev.criteria.finishing,
         function: initialData.inspection?.function || prev.criteria.function,
         completeness: initialData.inspection?.completeness || prev.criteria.completeness,
       },
@@ -140,7 +140,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
               material: Array.isArray(materials)
                 ? materials.join(", ")
                 : materials || prev.criteria.material,
-              finishing: inspection.visual_condition || prev.criteria.finishing,
+              finishing: prev.criteria.finishing,
               function: inspection.function || prev.criteria.function,
               completeness: inspection.completeness || prev.criteria.completeness,
             },
@@ -386,7 +386,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
                     />
                     <span className="text-sm text-gray-700">Sesuai spesifikasi</span>
                   </div>
-                  {crit !== "completeness" && crit !== "function" && (
+                  {crit !== "completeness" && crit !== "function" && crit !== "finishing" && (
                     <input
                       type="text"
                       name={crit}

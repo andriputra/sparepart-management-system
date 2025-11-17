@@ -70,7 +70,10 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
             part_description: spps.part_description || prev.part_description,
             qty: spps.qty || prev.qty,
             part_weight: parsedInspection.weight || spps.part_weight || prev.part_weight,
-            part_dimension: parsedInspection.package_dimension || spps.part_dimension || prev.part_dimension,
+            part_dimension:
+              parsedInspection.length && parsedInspection.width && parsedInspection.height
+                ? `${parsedInspection.length} x ${parsedInspection.width} x ${parsedInspection.height}`
+                : spps.part_dimension || prev.part_dimension,
             detail_part: spps.detail_part || prev.detail_part,
             created_by: spps.created_by || prev.created_by,
             approved_by: spps.approved_by || prev.approved_by,
@@ -174,7 +177,10 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
         part_description: initialData.part_description || prev.part_description,
         detail_parts: initialData.detail_part || prev.detail_parts,
         part_weight: parsedInspection.weight || prev.part_weight,
-        part_dimension: parsedInspection.package_dimension || prev.part_dimension,
+        part_dimension:
+          parsedInspection.length && parsedInspection.width && parsedInspection.height
+            ? `${parsedInspection.length} x ${parsedInspection.width} x ${parsedInspection.height}`
+            : prev.part_dimension,
         created_by: initialData.name || prev.created_by,
         illustration_part: getFullImageUrl(initialData.photo1_url || initialData.photo1) || prev.illustration_part,
       }));
@@ -209,8 +215,11 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
               part_number: initial.part_number || "",
               supplier: initial.supplier || "",
               part_description: initial.part_description || "",
-              part_weight: parsedInspection.weight || "",
-              part_dimension: parsedInspection.package_dimension || "",
+            part_weight: parsedInspection.weight || "",
+            part_dimension:
+              parsedInspection.length && parsedInspection.width && parsedInspection.height
+                ? `${parsedInspection.length} x ${parsedInspection.width} x ${parsedInspection.height}`
+                : "",
               detail_part: initial.detail_part || "",
               created_by: initial.name || "",
               illustration_part: getFullImageUrl(initial.photo1_url || initial.photo1),
