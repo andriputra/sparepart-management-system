@@ -139,7 +139,7 @@ export default function SppsGeneralInfo({ data }) {
                 </thead>
                 <tbody>
                     <tr className="h-[87px]">
-                        <td className="border border-gray-500 p-1 align-top">{data.package_detail || "-"}</td>
+                        <td className="border border-gray-500 p-1 align-top" style={{ whiteSpace: "pre-line" }}>{data.package_detail || "-"}</td>
                     </tr>
                 </tbody>
             </table>

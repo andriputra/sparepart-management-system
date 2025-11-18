@@ -151,7 +151,7 @@ router.get("/by-doc/:doc_no", async (req, res) => {
     try {
       parsedData = data.data_json ? JSON.parse(data.data_json) : {};
     } catch (e) {
-      console.warn("⚠️ Gagal parse data_json:", e.message);
+      console.warn("Gagal parse data_json:", e.message);
     }
 
     // Jika draft → pakai data_json

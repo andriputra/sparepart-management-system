@@ -150,7 +150,7 @@ router.post("/", async (req, res) => {
     // --- Update progress di SPIS ---
     await db.query("UPDATE spis SET progress_status = 'completed' WHERE id = ?", [spis_id]);
 
-    res.json({ message: "✅ SPQS berhasil disimpan", doc_no: finalDocNo });
+    res.json({ message: "SPQS berhasil disimpan", doc_no: finalDocNo });
   } catch (err) {
     console.error("❌ Error saving SPQS:", err);
     res.status(500).json({ error: "Gagal menyimpan SPQS" });
@@ -221,7 +221,7 @@ router.get("/by-doc/:doc_no", async (req, res) => {
     try {
       parsedData = data.data_json ? JSON.parse(data.data_json) : {};
     } catch (e) {
-      console.warn("⚠️ Gagal parse data_json:", e.message);
+      console.warn("Gagal parse data_json:", e.message);
     }
 
     // Jika draft → pakai data_json
@@ -231,10 +231,16 @@ router.get("/by-doc/:doc_no", async (req, res) => {
         doc_no: data.doc_no,
         status: data.status,
         id: data.id,
+        created_by: data.created_by,
+        approved_by: data.approved_by,
         created_signature_url: data.created_signature_url,
         approved_signature_url: data.approved_signature_url,
       });
     }
+
+    // Prevent parsedData from overwriting approved_by and created_by in submitted/completed
+    delete parsedData.approved_by;
+    delete parsedData.created_by;
 
     res.json({
       ...data,

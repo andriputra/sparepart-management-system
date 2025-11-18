@@ -341,6 +341,8 @@ router.get("/by-doc/:doc_no", async (req, res) => {
         doc_no: data.doc_no,
         status: data.status,
         id: data.id,
+        created_by: data.created_by,
+        approved_by: data.approved_by,
         created_signature_url: data.created_signature_url,
         approved_signature_url: data.approved_signature_url,
       });
@@ -494,7 +496,7 @@ router.get("/for-next/:user_id", async (req, res) => {
         doc_no: submitted[0].doc_no,
         status: submitted[0].status,
         data: {
-          ...parsedData, // 🧠 include jika data_json ada
+          ...parsedData, 
           part_number: submitted[0].part_number,
           supplier: submitted[0].supplier,
           part_description: submitted[0].part_description,
@@ -509,7 +511,6 @@ router.get("/for-next/:user_id", async (req, res) => {
       });
     }
 
-    // Kalau tidak ada dua-duanya
     res.json(null);
   } catch (err) {
     console.error("Error fetching SPIS for continuation:", err);

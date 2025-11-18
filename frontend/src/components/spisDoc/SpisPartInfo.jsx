@@ -41,7 +41,7 @@ export default function SpisPartInfo({ data }) {
               <td className="border border-gray-500 p-2 w-1/4 font-semibold">Supplier</td>
               <td className="border border-gray-500 p-2">{data.supplier || "-"}</td>
             </tr>
-            <tr>
+            <tr className="align-top">
               <td className="border border-gray-500 p-2 w-1/4 font-semibold">Part Deskripsi</td>
               <td className="border border-gray-500 p-2">{data.part_description || "-"}</td>
               <td className="border border-gray-500 p-2 w-1/4 font-semibold">Detail Part</td>
