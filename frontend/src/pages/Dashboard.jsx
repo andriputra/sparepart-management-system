@@ -139,7 +139,7 @@ export default function Dashboard() {
           </p>
         </div>
         {/* === Recent Data Chart === */}
-          <div className="bg-white p-6 rounded-lg shadow mb-10">
+          <div className="bg-white p-6 rounded-lg shadow-lg mb-10">
             <h2 className="text-lg font-semibold mb-4 text-gray-700">Recent Activity Trend</h2>
             <Line
               data={{

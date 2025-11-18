@@ -90,13 +90,30 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
     fetchUser();
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
     if (!initialData || Object.keys(initialData).length === 0) return;
+    let parsedInspection = {};
+    try {
+      if (typeof initialData.inspection === "string") {
+        parsedInspection = JSON.parse(initialData.inspection);
+      } else if (
+        typeof initialData.inspection === "object" &&
+        initialData.inspection !== null
+      ) {
+        parsedInspection = initialData.inspection;
+      }
+    } catch (err) {
+      console.warn("Failed to parse inspection JSON:", err);
+    }
     setData((prev) => ({
       ...prev,
       criteria: {
         ...prev.criteria,
         package_dimension: initialData.inspection?.package_dimension || prev.criteria.package_dimension,
+        part_dimension:
+                parsedInspection.length && parsedInspection.width && parsedInspection.height
+                  ? `${parsedInspection.length} x ${parsedInspection.width} x ${parsedInspection.height}`
+                  : "",
         weight: initialData.inspection?.weight || prev.criteria.weight,
         material: Array.isArray(initialData.part_material) ? initialData.part_material.join(", ") : prev.criteria.material,
         finishing: prev.criteria.finishing,
@@ -104,6 +121,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
         completeness: initialData.inspection?.completeness || prev.criteria.completeness,
       },
     }));
+    console.log("Initial data loaded into form:", initialData);
   }, [initialData]);
 
   useEffect(() => {
@@ -360,14 +378,14 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Quality Criteria</h3>
         <div className="grid grid-cols-2 gap-4">
-          {["package_dimension", "weight", "material", "finishing", "function", "completeness"].map(
+          {["part_dimension", "weight", "material", "finishing", "function", "completeness"].map(
             (crit) => {
               // Only these are required: package_dimension, weight, material
-              const requiredCriteria = ["package_dimension", "weight", "material"];
+              const requiredCriteria = ["part_dimension", "weight", "material"];
               return (
                 <div key={crit} className="border p-3 rounded">
                   <label className="block text-sm font-semibold mb-1 capitalize">
-                    {crit}
+                    {crit.replace(/_/g, " ")}
                   </label>
                   <div className="flex items-center gap-2 mb-2">
                     <input
@@ -386,7 +404,7 @@ export default function StepSpqs({ onPrev, onNext, initialData }) {
                     />
                     <span className="text-sm text-gray-700">Sesuai spesifikasi</span>
                   </div>
-                  {crit !== "completeness" && crit !== "function" && crit !== "finishing" && (
+                  {crit !== "completeness" && crit !== "function" && crit !== "finishing" &&(
                     <input
                       type="text"
                       name={crit}

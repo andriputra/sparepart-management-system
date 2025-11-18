@@ -204,7 +204,7 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
                 parsedInspection = JSON.parse(initial.inspection);
               } else if (
                 typeof initial.inspection === "object" &&
-                initial.inspection !== null
+                 initial.inspection !== null
               ) {
                 parsedInspection = initial.inspection;
               }
@@ -215,11 +215,11 @@ export default function StepSpps({ onNext, onPrev, initialData }) {
               part_number: initial.part_number || "",
               supplier: initial.supplier || "",
               part_description: initial.part_description || "",
-            part_weight: parsedInspection.weight || "",
-            part_dimension:
-              parsedInspection.length && parsedInspection.width && parsedInspection.height
-                ? `${parsedInspection.length} x ${parsedInspection.width} x ${parsedInspection.height}`
-                : "",
+              part_weight: parsedInspection.weight || "",
+              part_dimension:
+                parsedInspection.length && parsedInspection.width && parsedInspection.height
+                  ? `${parsedInspection.length} x ${parsedInspection.width} x ${parsedInspection.height}`
+                  : "",
               detail_part: initial.detail_part || "",
               created_by: initial.name || "",
               illustration_part: getFullImageUrl(initial.photo1_url || initial.photo1),
