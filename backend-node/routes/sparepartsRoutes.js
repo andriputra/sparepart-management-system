@@ -76,7 +76,6 @@ router.put("/approve/:doc_no", async (req, res) => {
 
     const approved_by = approver.fullname;
     const approved_signature_url = approver.signature_url || null;
-    console.log("Approver fullname:", approved_by);
 
     // 🔹 Ambil spis_id berdasarkan doc_no
     const [[spis]] = await db.query("SELECT id FROM spis WHERE doc_no = ?", [doc_no]);

@@ -23,7 +23,7 @@ export default function DocumentView() {
                     res = await api.get(`/spqs/by-doc/${encodeURIComponent(decodedDocNo)}`);
                   }
                 setData(res.data);
-                console.log("📄 Loaded document data:", res.data);
+                console.log("Loaded document data:", res.data);
             } catch (err) {
                 console.error("Failed to load document data:", err);
             }

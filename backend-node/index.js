@@ -32,7 +32,7 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
 app.get("/", (req, res) => {
-  res.send("✅ Node.js Backend for Sparepart Management System is running");
+  res.send("Node.js Backend for Sparepart Management System is running");
 });
 
 app.use("/api/auth", authRoutes);
@@ -42,9 +42,6 @@ app.use("/api/spqs", spqsRoutes);
 app.use("/api/spareparts", sparepartsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-// app.use("/api/spareparts/spis", spisRoutes);
-
-console.log("✅ spisRoutes loaded at /api/spis");
 
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

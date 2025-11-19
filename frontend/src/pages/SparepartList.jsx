@@ -94,7 +94,6 @@ export default function SparepartList() {
     }
 
     const handleDelete = async () => {
-        console.log("Delete clicked, selectedDocNo =", selectedDocNo);
         if (!selectedDocNo) return;
     
         try {
@@ -117,7 +116,6 @@ export default function SparepartList() {
     
     // 🔹 Fungsi untuk mengeksekusi approval (setelah konfirmasi)
     const handleApprove = async () => {
-        console.log("Approved, selectedDocNo =", selectedApproveDocNo);
         if (!selectedApproveDocNo) return;
     
         try {

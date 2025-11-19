@@ -322,7 +322,6 @@ router.get("/by-doc/:doc_no", async (req, res) => {
     );
 
     if (rows.length === 0) {
-      console.log("⚠️ Tidak ditemukan dokumen SPIS dengan doc_no:", decodedDocNo);
       return res.status(404).json({ message: "SPIS not found" });
     }
 
