@@ -30,38 +30,96 @@ export default function SpqsQuality({ data }) {
                 <tbody>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">1</td>
-                        <td className="border border-gray-500 p-1">Dimensi</td>
+                        <td className="border border-gray-500 p-1">Dimensi Part</td>
                         <td className="border border-gray-500 p-1">{data.criteria_dimension_remark || 'Sesuai dengan standar kualitas'}</td>
-                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_dimension_ok || data.criteria.package_dimension_ok)}</td>
-                        <td className="border border-gray-500 p-1">{data.criteria_dimension || data.criteria.package_dimension || '-'}</td>
+                        <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_dimension_ok || data.criteria.part_dimension_ok)}</td>
+                        <td className="border border-gray-500 p-1">
+                            {(  data.criteria_dimension_ok === 1 || 
+                                data.criteria_dimension_ok === "1" || 
+                                data.criteria_dimension_ok === true || 
+                                data.criteria.part_dimension_ok === 1 || 
+                                data.criteria.part_dimension_ok === "1" || 
+                                data.criteria.part_dimension_ok === true)
+                                ? (data.criteria_dimension ||
+                                    (data.inspection
+                                        ? `${data.inspection.length ?? 0} x ${data.inspection.width ?? 0} x ${data.inspection.height ?? 0}`
+                                        : "-"
+                                    )
+                                )
+                                : data.criteria.part_dimension_remark || data.criteria.part_dimension || "-"
+                            }
+                        </td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">2</td>
                         <td className="border border-gray-500 p-1">Berat</td>
                         <td className="border border-gray-500 p-1">{'Sesuai dengan standar kualitas'}</td>
                         <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_weight_ok || data.criteria.weight_ok)}</td>
-                        <td className="border border-gray-500 p-1">{data.criteria_weight_remark || data.criteria_weight || data.criteria.weight_remark || '-'} Kg</td>
+                        <td className="border border-gray-500 p-1">
+                            {(  data.criteria_weight_ok === 1 || 
+                                data.criteria_weight_ok === "1" || 
+                                data.criteria_weight_ok === true ||
+                                data.criteria.weight_ok === 1 || 
+                                data.criteria.weight_ok === "1" || 
+                                data.criteria.weight_ok === true
+                            )
+                                ? `${data.criteria.weight || data.weight || data.criteria_weight || "-"} Kg`
+                                : data.criteria.weight_remark || data.criteria_weight_remark || "-"
+                            }
+                        </td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">3</td>
                         <td className="border border-gray-500 p-1">Material</td>
                         <td className="border border-gray-500 p-1">{data.criteria_material_remark || 'Sesuai dengan standar kualitas'}</td>
                         <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_material_ok || data.criteria.material_ok)}</td>
-                        <td className="border border-gray-500 p-1">{data.criteria_material || data.criteria.material || '-'}</td>
+                        <td className="border border-gray-500 p-1">
+                            {(  data.criteria_material_ok === 1 || 
+                                data.criteria_material_ok === "1" || 
+                                data.criteria_material_ok === true ||
+                                data.criteria.material_ok === 1 || 
+                                data.criteria.material_ok === "1" || 
+                                data.criteria.material_ok === true)
+                                ? (data.criteria?.material || data.material || data.criteria_material || "-")
+                                : (data.criteria.material_remark || data.criteria_material_remark || "-")
+                            }
+                        </td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">4</td>
                         <td className="border border-gray-500 p-1">Finishing</td>
                         <td className="border border-gray-500 p-1">{'Sesuai dengan standar kualitas'}</td>
                         <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_finishing_ok || data.criteria.finishing_ok)}</td>
-                        <td className="border border-gray-500 p-1">{data.criteria_finishing_remark || data.criteria.finishing ||  data.criteria.finishing_remark || '-'}</td>
+                        <td className="border border-gray-500 p-1">
+                            {(  data?.criteria_finishing_ok === 1 || 
+                                data?.criteria_finishing_ok === "1" || 
+                                data?.criteria_finishing_ok === true ||
+                                data?.criteria.finishing_ok === 1 || 
+                                data?.criteria.finishing_ok === "1" || 
+                                data?.criteria.finishing_ok === true
+                            )
+                                ? (data.criteria.finishing_remark || data.criteria_finishing_remark)
+                                : "-"
+                            }
+                        </td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">5</td>
                         <td className="border border-gray-500 p-1">Fungsi</td>
                         <td className="border border-gray-500 p-1">{'Sesuai dengan standar kualitas'}</td>
                         <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_function_ok || data.criteria.function_ok)}</td>
-                        <td className="border border-gray-500 p-1">{data.criteria_function || data.criteria.function_remark || '-'}</td>
+                        <td className="border border-gray-500 p-1">
+                            {(  data.criteria_function_ok === 1 || 
+                                data.criteria_function_ok === "1" || 
+                                data.criteria_function_ok === true ||
+                                data.criteria.function_ok === 1 || 
+                                data.criteria.function_ok === "1" || 
+                                data.criteria.function_ok === true
+                            )
+                                ? (data.criteria.function_remark || data.criteria_function_remark)
+                                : "-"
+                            }
+                        </td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">6</td>
@@ -74,8 +132,8 @@ export default function SpqsQuality({ data }) {
                         <td className="border border-gray-500 p-1 text-center">7</td>
                         <td className="border border-gray-500 p-1">Kondisi Part</td>
                         <td className="border border-gray-500 p-1">Keausan</td>
-                        <td className="border border-gray-500 p-1 text-center">{renderCheck(data.surface_bend || data.criteria?.surface?.bend)}</td>
-                        <td className="border border-gray-500 p-1">{data.criteria?.surface_remark?.bend || '-'}</td>
+                        <td className="border border-gray-500 p-1 text-center">{renderCheck(data.surface_wear || data.criteria?.surface?.wear)}</td>
+                        <td className="border border-gray-500 p-1">{data.criteria?.surface_remark?.wear || '-'}</td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1"></td>
@@ -109,8 +167,8 @@ export default function SpqsQuality({ data }) {
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1"></td>
                         <td className="border border-gray-500 p-1">Bengkok</td>
-                        <td className="border border-gray-500 p-1 text-center">{renderCheck(data.surface_wear || data.criteria?.surface?.wear)}</td>
-                        <td className="border border-gray-500 p-1">{data.criteria?.surface_remark?.wear || '-'}</td>
+                        <td className="border border-gray-500 p-1 text-center">{renderCheck(data.surface_bend || data.criteria?.surface?.bend)}</td>
+                        <td className="border border-gray-500 p-1">{data.criteria?.surface_remark?.bend || '-'}</td>
                     </tr>
                 </tbody>
             </table>

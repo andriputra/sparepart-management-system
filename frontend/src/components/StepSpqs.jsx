@@ -248,6 +248,27 @@ useEffect(() => {
     }
   };
 
+  // const handleSaveDraft = async () => {
+  //   try {
+  //     const userId = localStorage.getItem("user_id");
+  //     const token = localStorage.getItem("token");
+  //     if (!userId || !token) {
+  //       toast.error("Please login first.");
+  //       return;
+  //     }
+
+  //     await api.post(
+  //       "/spqs/save-draft",
+  //       { user_id: userId, data },
+  //       { headers: { Authorization: `Bearer ${token}` } }
+  //     );
+  //     toast.success("SPQS draft saved successfully!");
+  //     setIsDraftSaved(true);
+  //   } catch (err) {
+  //     console.error("Error saving draft:", err);
+  //     toast.error("Failed to save draft");
+  //   }
+  // };
   const handleSaveDraft = async () => {
     try {
       const userId = localStorage.getItem("user_id");
@@ -256,12 +277,33 @@ useEffect(() => {
         toast.error("Please login first.");
         return;
       }
-
+  
+      // 🔹 Auto-generate part_dimension if missing
+      let formattedPartDimension = data.criteria.part_dimension;
+  
+      if (!formattedPartDimension || formattedPartDimension.trim() === "") {
+        const dim = data.criteria.package_dimension;
+        if (dim) {
+          const [length = 0, width = 0, height = 0] = dim.split(" x ");
+          formattedPartDimension = `${length} x ${width} x ${height}`;
+        }
+      }
+  
+      // 🔹 Create payload safely (avoid async setData during POST)
+      const safeDraftPayload = {
+        ...data,
+        criteria: {
+          ...data.criteria,
+          part_dimension: formattedPartDimension,
+        }
+      };
+  
       await api.post(
         "/spqs/save-draft",
-        { user_id: userId, data },
+        { user_id: userId, data: safeDraftPayload },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+  
       toast.success("SPQS draft saved successfully!");
       setIsDraftSaved(true);
     } catch (err) {
@@ -404,14 +446,19 @@ useEffect(() => {
                     />
                     <span className="text-sm text-gray-700">Sesuai spesifikasi</span>
                   </div>
-                  {crit !== "completeness" && crit !== "function" && crit !== "finishing" &&(
+                  {crit !== "completeness" && crit !== "function" && crit !== "finishing" && (
                     <input
                       type="text"
                       name={crit}
                       value={data.criteria[crit]}
                       onChange={handleChange}
                       readOnly
-                      className="border p-2 w-full rounded mb-2 bg-gray-100 text-gray-700"
+                      disabled={!data.criteria[`${crit}_ok`]}
+                      className={`border p-2 w-full rounded mb-2 ${
+                        data.criteria[`${crit}_ok`]
+                          ? "bg-gray-100 text-gray-700"
+                          : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      }`}
                     />
                   )}
                   <input
@@ -427,7 +474,20 @@ useEffect(() => {
                         },
                       }))
                     }
-                    className="border p-2 w-full rounded"
+                    disabled={
+                      crit !== "finishing" &&
+                      crit !== "completeness" &&
+                      crit !== "function" &&
+                      data.criteria[`${crit}_ok`] === true
+                    }
+                    className={`border p-2 w-full rounded ${
+                      (crit !== "finishing" &&
+                        crit !== "completeness" &&
+                        crit !== "function" &&
+                        data.criteria[`${crit}_ok`])
+                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                        : ""
+                    }`}
                     placeholder="Keterangan (jika tidak sesuai)"
                   />
                 </div>
