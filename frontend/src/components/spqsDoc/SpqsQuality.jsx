@@ -39,7 +39,8 @@ export default function SpqsQuality({ data }) {
                                 data.criteria_dimension_ok === true || 
                                 data.criteria.part_dimension_ok === 1 || 
                                 data.criteria.part_dimension_ok === "1" || 
-                                data.criteria.part_dimension_ok === true)
+                                data.criteria.part_dimension_ok === true
+                            )
                                 ? (data.criteria_dimension ||
                                     (data.inspection
                                         ? `${data.inspection.length ?? 0} x ${data.inspection.width ?? 0} x ${data.inspection.height ?? 0}`
