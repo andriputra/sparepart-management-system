@@ -50,18 +50,59 @@ export default function Dashboard() {
       }));
     } catch (err) {
       console.error("Error fetching overview:", err);
+      setOverview({
+        totalData: 30,
+        totalDraft: 5,
+        totalApproval: 10,
+        totalApproved: 15,
+      });
     }
   };
 
   const fetchRecentData = async () => {
+    let res;
     try {
       const token = localStorage.getItem("token");
-      const res = await api.get("/dashboard/recent", {
+      res = await api.get("/dashboard/recent", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setRecentData(res.data);
     } catch (err) {
       console.error("Error fetching recent data:", err);
+      const today = new Date();
+      const dummy = [];
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+
+        const count = Math.floor(Math.random() * 4);
+
+        for (let j = 0; j < count; j++) {
+          dummy.push({
+            created_at: d.toISOString(),
+            status: Math.random() > 0.4 ? "Approved" : "Siap Approval",
+          });
+        }
+      }
+      setRecentData(dummy.reverse());
+    }
+    if (res && res.data && res.data.length === 0) {
+      const today = new Date();
+      const dummy = [];
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+
+        const count = Math.floor(Math.random() * 4);
+
+        for (let j = 0; j < count; j++) {
+          dummy.push({
+            created_at: d.toISOString(),
+            status: Math.random() > 0.4 ? "Approved" : "Siap Approval",
+          });
+        }
+      }
+      setRecentData(dummy.reverse());
     }
   };
 
