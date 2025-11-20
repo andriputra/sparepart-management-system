@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Waktu pembuatan: 04 Nov 2025 pada 09.37
+-- Waktu pembuatan: 20 Nov 2025 pada 10.41
 -- Versi server: 10.4.28-MariaDB
 -- Versi PHP: 8.2.4
 
@@ -104,7 +104,13 @@ CREATE TABLE `spps` (
   `package_illustration_0` varchar(255) DEFAULT NULL,
   `package_illustration_1` varchar(255) DEFAULT NULL,
   `result_illustration` varchar(255) DEFAULT NULL,
-  `data_json` longtext DEFAULT NULL
+  `data_json` longtext DEFAULT NULL,
+  `package_material_0` varchar(255) DEFAULT NULL,
+  `package_code_0` varchar(100) DEFAULT NULL,
+  `package_material_1` varchar(255) DEFAULT NULL,
+  `package_code_1` varchar(100) DEFAULT NULL,
+  `package_material_2` varchar(255) DEFAULT NULL,
+  `package_code_2` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -167,7 +173,13 @@ CREATE TABLE `spqs` (
   `criteria_function_ok` tinyint(1) DEFAULT 0,
   `criteria_function_remark` varchar(255) DEFAULT NULL,
   `criteria_completeness_ok` tinyint(1) DEFAULT 0,
-  `criteria_completeness_remark` varchar(255) DEFAULT NULL
+  `criteria_completeness_remark` varchar(255) DEFAULT NULL,
+  `surface_wear_remark` varchar(255) DEFAULT NULL,
+  `surface_damage_remark` varchar(255) DEFAULT NULL,
+  `surface_scratch_remark` varchar(255) DEFAULT NULL,
+  `surface_crack_remark` varchar(255) DEFAULT NULL,
+  `surface_corrosion_remark` varchar(255) DEFAULT NULL,
+  `surface_bend_remark` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -207,8 +219,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `fullname`, `department`, `telephone`, `email`, `password`, `role`, `signature_url`, `created_at`) VALUES
-(11, 'admin', 'Martin Paes', 'Inventory Management', '0876627716721', 'admin@example.com', '$2b$10$3ecgulsqqqSAcJzHTdA5/uMMEgJKqcpVmaeZwDqZL59aAdGblYCZC', 'admin', '/uploads/signatures/1761913191632.png', '2025-10-25 02:31:30'),
-(12, 'approver user', 'Hureian', 'Approved', '021812992121', 'approver@example.com', '$2b$10$LG3HzWx1jietCucWXNJgZ.SLNGv64zrHypZB2FHtDvkchQKerdEJy', 'approval', '/uploads/signatures/1761731880725.png', '2025-10-25 02:32:28'),
+(11, 'admin', 'Martin Paes', 'Inventory Management', '0876627716721', 'admin@example.com', '$2b$10$3ecgulsqqqSAcJzHTdA5/uMMEgJKqcpVmaeZwDqZL59aAdGblYCZC', 'admin', '/uploads/signatures/1762919095484.png', '2025-10-25 02:31:30'),
+(12, 'approver user', 'Approver User', 'Approved', '021812992121', 'approver@example.com', '$2b$10$LG3HzWx1jietCucWXNJgZ.SLNGv64zrHypZB2FHtDvkchQKerdEJy', 'approval', '/uploads/signatures/1762402972274.png', '2025-10-25 02:32:28'),
 (14, 'view melihat', 'Melihat', NULL, NULL, 'tamu@example.com', '$2b$10$gYTgPRNrzPYFg.Zt5xMTj.SArWjQapgMqdO1a5nuJMy3fvGL76UU6', 'viewer', NULL, '2025-10-29 12:55:50');
 
 --
@@ -274,7 +286,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT untuk tabel `spis`
 --
 ALTER TABLE `spis`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=100;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=124;
 
 --
 -- AUTO_INCREMENT untuk tabel `spis_draft`
@@ -286,19 +298,19 @@ ALTER TABLE `spis_draft`
 -- AUTO_INCREMENT untuk tabel `spps`
 --
 ALTER TABLE `spps`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87;
 
 --
 -- AUTO_INCREMENT untuk tabel `spps_draft`
 --
 ALTER TABLE `spps_draft`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT untuk tabel `spqs`
 --
 ALTER TABLE `spqs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
 
 --
 -- AUTO_INCREMENT untuk tabel `spqs_draft`
