@@ -4,6 +4,8 @@ Sistem manajemen sparepart berbasis **React (frontend)** dan **Node.js + MySQL (
 Didesain untuk mengelola dokumen SPIS, SPPS, SPQS dengan status draft, approval, dan data siap kirim.
 
 ---
+<img width="1652" height="833" alt="Screenshot 2025-11-20 at 16 35 52" src="https://github.com/user-attachments/assets/71f7e3cf-e314-4326-8402-a2af0fa15374" />
+
 
 ## 🚀 Tech Stack
 
@@ -22,6 +24,8 @@ Didesain untuk mengelola dokumen SPIS, SPPS, SPQS dengan status draft, approval,
 - ⚙️ dotenv
 
 ---
+<img width="2802" height="2641" alt="FireShot Capture 111 - frontend -  localhost" src="https://github.com/user-attachments/assets/4f58f466-aec9-42ae-88fc-fa0359dba809" />
+
 
 ## 🧩 Persiapan Awal
 
