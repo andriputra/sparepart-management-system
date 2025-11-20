@@ -85,8 +85,8 @@ router.put("/approve/:doc_no", async (req, res) => {
 
     // 🔹 Update semua tabel berdasarkan spis_id
     await db.query(
-      "UPDATE spis SET approved_by = ?, status = 'completed' WHERE doc_no = ?",
-      [approved_by, doc_no]
+      "UPDATE spis SET approved_by = ?, status = 'completed' WHERE id = ?",
+      [approved_by, spis.id]
     );
 
     await db.query(

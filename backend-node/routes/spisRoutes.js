@@ -330,7 +330,7 @@ router.get("/by-doc/:doc_no", async (req, res) => {
     try {
       parsedData = data.data_json ? JSON.parse(data.data_json) : {};
     } catch (e) {
-      console.warn("⚠️ Gagal parse data_json:", e.message);
+      console.warn("Gagal parse data_json:", e.message);
     }
 
     // Jika draft → pakai data_json
@@ -341,15 +341,15 @@ router.get("/by-doc/:doc_no", async (req, res) => {
         status: data.status,
         id: data.id,
         created_by: data.created_by,
-        approved_by: data.approved_by,
+        approved_by: data.approved_by || parsedData.approved_by || "",
         created_signature_url: data.created_signature_url,
         approved_signature_url: data.approved_signature_url,
       });
     }
 
     res.json({
-      ...data,
       ...parsedData,
+      ...data,
       created_signature_url: data.created_signature_url,
       approved_signature_url: data.approved_signature_url,
     });

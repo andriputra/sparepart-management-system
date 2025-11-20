@@ -126,7 +126,6 @@ router.get("/next-docno", async (req, res) => {
 router.get("/by-doc/:doc_no", async (req, res) => {
   try {
     const decodedDocNo = decodeURIComponent(req.params.doc_no);
-    // Join users table to get signature URLs
     const [rows] = await db.query(
       `SELECT 
           s.*, 

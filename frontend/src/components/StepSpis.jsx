@@ -437,7 +437,7 @@ export default function StepSpis({ onNext, initialData }) {
       );
   
       toast.update(toastId, {
-        render: "✅ Draft berhasil disimpan!",
+        render: "Draft berhasil disimpan!",
         type: "success",
         isLoading: false,
         autoClose: 2500,

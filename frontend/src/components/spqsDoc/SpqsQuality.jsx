@@ -100,7 +100,7 @@ export default function SpqsQuality({ data }) {
                                 data?.criteria.finishing_ok === true
                             )
                                 ? (data.criteria.finishing_remark || data.criteria_finishing_remark)
-                                : "-"
+                                : (data.criteria.finishing_remark || data.criteria_finishing_remark || "-")
                             }
                         </td>
                     </tr>
@@ -118,7 +118,7 @@ export default function SpqsQuality({ data }) {
                                 data.criteria.function_ok === true
                             )
                                 ? (data.criteria.function_remark || data.criteria_function_remark)
-                                : "-"
+                                : (data.criteria.function_remark || data.criteria_function_remark || '-')
                             }
                         </td>
                     </tr>
@@ -127,7 +127,9 @@ export default function SpqsQuality({ data }) {
                         <td className="border border-gray-500 p-1">Kelengkapan</td>
                         <td className="border border-gray-500 p-1">Sesuai dengan standar kualitas</td>
                         <td className="border border-gray-500 p-1">{renderValueCheck(data.criteria_completeness_ok || data.criteria.completeness_ok)}</td>
-                        <td className="border border-gray-500 p-1">{data.criteria_completeness_remark || data.criteria.completeness_remark || '-'}</td>
+                        <td className="border border-gray-500 p-1">
+                            { data.criteria_completeness_remark || data.criteria.completeness_remark || '-'}
+                        </td>
                     </tr>
                     <tr>
                         <td className="border border-gray-500 p-1 text-center">7</td>
